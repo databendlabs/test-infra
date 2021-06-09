@@ -6,7 +6,6 @@ package plugins
 import (
 	"context"
 	githubcli "datafuselabs/test-infra/chatbots/github"
-	"datafuselabs/test-infra/chatbots/utils"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -30,7 +29,7 @@ func init() {
 }
 
 func handleIssueComment(client *Agent, ic *github.IssueCommentEvent) error {
-	handler, err := newRunPerf(client, ic, log.With().Str("issue comment", "fusebench-local").Logger())
+	handler, err := newRunPerf(ic, log.With().Str("issue comment", "fusebench-local").Logger())
 	if err != nil {
 		return err
 	}
@@ -148,12 +147,9 @@ type handler struct {
 
 	// define a series of client-payloads that will be posted to workflow
 	Payloads map[string]string
-
-	// Benchmark result storage location
-	Storage utils.StorageInterface
 }
 
-func newRunPerf(client *Agent, e *github.IssueCommentEvent, log zerolog.Logger) (*handler, error) {
+func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger) (*handler, error) {
 	githubCli, err := githubcli.NewGithubClient(context.Background(), e)
 	if err != nil {
 		log.Error().Msgf("Unable to initialize github client given issue comment event %s, %s", e.GetComment().String(), err.Error())
@@ -165,6 +161,5 @@ func newRunPerf(client *Agent, e *github.IssueCommentEvent, log zerolog.Logger) 
 		gc:       githubCli,
 		log:      log,
 		Payloads: make(map[string]string),
-		Storage:  client.Store,
 	}, nil
 }
