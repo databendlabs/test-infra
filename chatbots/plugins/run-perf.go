@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	reg = regexp.MustCompile(`(?mi)^/fusebench-local\s*(?P<RELEASE>master|main|current|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
+	reg = regexp.MustCompile(`(?mi)^/run-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
 )
 
 func init() {
@@ -72,21 +72,31 @@ func handle(h *handler) error {
 	}
 	h.log.Info().Msgf(h.gc.GetIssueState())
 	lastSHA := h.gc.GetLastCommitSHA()
-	err := handlerhelper(h, lastSHA)
+	lastTag, err := h.gc.GetLatestTag()
+	if err != nil {
+		return err
+	}
+	err = handlerhelper(h, lastSHA, lastTag)
 	if err != nil {
 		if strings.Contains(err.Error(), "is not a org, member nor a collaborator") {
 			h.gc.PostComment(err.Error())
 		}
 		return err
 	}
+	err = h.gc.CreateRepositoryDispatch("run-perf", h.Payloads)
+	if err != nil {
+		h.log.Error().Msgf("cannot create run- repository dispatch, %s", err.Error())
+		return err
+	}
+
 	return nil
 }
 
-func handlerhelper(h *handler, sha string) error {
+func handlerhelper(h *handler, sha string, lastTag string) error {
 	command := extractCommand(h.gc.CommentBody)
 	matches := h.regexp.FindAllStringSubmatch(command, -1)
 	if matches == nil {
-		return nil
+		return fmt.Errorf("there is no matching regex")
 	}
 	err := h.verifyUser()
 	if err != nil {
@@ -97,20 +107,22 @@ func handlerhelper(h *handler, sha string) error {
 		return nil
 	}
 	switch matches[0][1] {
-	case "current":
-		h.BranchName = sha
+	case "latest":
+		h.RefBranch = lastTag
 	default:
-		h.BranchName = matches[0][1]
+		h.RefBranch = matches[0][1]
 	}
-	h.log.Info().Msgf("current testing branch: %s", h.BranchName)
+	h.CurrentBranch = sha
+	h.log.Info().Msgf("current testing branch: %s, reference branch: %s", h.CurrentBranch, h.RefBranch)
 	err = extractPayload(h, sha)
 	return err
 }
 
 func extractPayload(h *handler, sha string) error {
-	h.Payloads["BranchName"] = h.BranchName
+	h.Payloads["CURRENT_BRANCH"] = h.CurrentBranch
 	h.Payloads["PR_NUMBER"] = strconv.Itoa(h.gc.Pr)
 	h.Payloads["LAST_COMMIT_SHA"] = sha
+	h.Payloads["REF_BRANCH"] = h.RefBranch
 	return nil
 
 }
@@ -127,8 +139,11 @@ type handler struct {
 	// log define structed logging interface.
 	log zerolog.Logger
 
-	// define the branch that will be tested through fusebench
-	BranchName string
+	// define the branch that the current branch will be tested with
+	RefBranch string
+
+	// define the current branch we want to test
+	CurrentBranch string
 
 	// define a series of client-payloads that will be posted to workflow
 	Payloads map[string]string

@@ -23,6 +23,7 @@ type GithubClient struct {
 	CommentBody       string
 	AuthorAssociation string
 	State             string
+	LastTag           string
 	Ctx               context.Context
 }
 
@@ -87,4 +88,18 @@ func (c GithubClient) CreateRepositoryDispatch(eventType string, clientPayload m
 	log.Printf("creating repository_dispatch with payload: %v", string(allArgs))
 	_, _, err = c.Clt.Repositories.Dispatch(c.Ctx, c.Owner, c.Repo, rd)
 	return err
+}
+
+func (c GithubClient) GetLatestTag() (string, error) {
+	listops := &github.ListOptions{Page: 1, PerPage: 250}
+	tags, _, err := c.Clt.Repositories.ListTags(context.Background(), c.Owner, c.Repo, listops)
+	if err != nil {
+		return "", err
+	}
+	if len(tags) > 0 {
+		c.LastTag = tags[0].GetName()
+	} else {
+		return "", fmt.Errorf("%s owned by %s has no tags", c.Repo, c.Owner)
+	}
+	return c.LastTag, nil
 }
