@@ -7,6 +7,7 @@ require (
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github/v35 v35.2.0
 	github.com/gorilla/mux v1.8.0
+	github.com/jnovack/flag v1.16.0 // indirect
 	github.com/rs/zerolog v1.22.0
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 // indirect

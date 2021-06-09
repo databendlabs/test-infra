@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	githubcli "datafuselabs/test-infra/chatbots/github"
+	"datafuselabs/test-infra/chatbots/utils"
 )
 
 var (
@@ -18,15 +19,17 @@ var (
 type Agent struct {
 	GithubClient *githubcli.GithubClient
 	Logger       zerolog.Logger
+	Store        utils.StorageInterface
 }
 
 // IssueCommentHandler defines the function contract for a github.IssueCommentEvent handler.
 type IssueCommentHandler func(*Agent, *github.IssueCommentEvent) error
 
-func NewAgent(gitClient *githubcli.GithubClient) *Agent {
+func NewAgent(gitClient *githubcli.GithubClient, storage utils.StorageInterface) *Agent {
 	return &Agent{
 		GithubClient: gitClient,
 		Logger:       log.With().Str("test-infra", "agent").Logger(),
+		Store:        storage,
 	}
 }
 func RegisterIssueCommentHandler(name string, fn IssueCommentHandler) {

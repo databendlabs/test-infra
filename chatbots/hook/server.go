@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"datafuselabs/test-infra/chatbots/plugins"
+	"datafuselabs/test-infra/chatbots/utils"
 	"fmt"
 	"net/http"
 	"sync"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/go-github/v35/github"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -20,7 +22,7 @@ const (
 )
 
 type Config struct {
-	StorageEndpoint StorageInterface
+	StorageEndpoint utils.StorageInterface
 	ctx             context.Context
 	Logger          zerolog.Logger
 	GithubToken     string
@@ -33,7 +35,7 @@ type Server struct {
 	wg     sync.WaitGroup
 }
 
-func NewConfig(StorageBackend StorageInterface, ctx context.Context, Logger zerolog.Logger, GithubToken, WebhookToken, Address string) Config {
+func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logger zerolog.Logger, GithubToken, WebhookToken, Address string) Config {
 	return Config{
 		StorageEndpoint: StorageBackend,
 		ctx:             ctx,
@@ -98,6 +100,8 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 				}
 			}(name, handler)
 		}
+	default:
+		log.Info().Msgf("only issue_comment event is supported now")
 	}
 }
 
