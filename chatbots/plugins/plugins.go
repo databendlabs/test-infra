@@ -6,28 +6,29 @@ package plugins
 import (
 	"github.com/google/go-github/v35/github"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	githubcli "datafuselabs/test-infra/chatbots/github"
 )
 
 var (
-	issueCommentHandlers = map[string]IssueCommentHandler{}
+	IssueCommentHandlers = map[string]IssueCommentHandler{}
 )
 
 type Agent struct {
 	GithubClient *githubcli.GithubClient
-	Logger       *zerolog.Event
+	Logger       zerolog.Logger
 }
 
 // IssueCommentHandler defines the function contract for a github.IssueCommentEvent handler.
 type IssueCommentHandler func(*Agent, *github.IssueCommentEvent) error
 
-func NewAgent(gitClient *githubcli.GithubClient, logger *zerolog.Logger) *Agent {
+func NewAgent(gitClient *githubcli.GithubClient) *Agent {
 	return &Agent{
 		GithubClient: gitClient,
-		Logger:       logger.Info().Str("type", "plugins"),
+		Logger:       log.With().Str("test-infra", "agent").Logger(),
 	}
 }
 func RegisterIssueCommentHandler(name string, fn IssueCommentHandler) {
-	issueCommentHandlers[name] = fn
+	IssueCommentHandlers[name] = fn
 }
