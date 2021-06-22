@@ -3,6 +3,8 @@ package hook
 import (
 	"context"
 	"datafuselabs/test-infra/chatbots/plugins"
+	_ "datafuselabs/test-infra/chatbots/plugins/builddocker"
+	_ "datafuselabs/test-infra/chatbots/plugins/runperf"
 	"datafuselabs/test-infra/chatbots/utils"
 	"fmt"
 	"io/ioutil"
@@ -83,6 +85,7 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 
 	switch e := event.(type) {
 	case *github.IssueCommentEvent:
+		log.Info().Msgf("received issue comment %s", *e.Action)
 		if *e.Action != "created" {
 			http.Error(w, "issue_comment type must be 'created'", http.StatusOK)
 			return
@@ -103,7 +106,7 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 			}(name, handler)
 		}
 	default:
-		log.Info().Msgf("only issue_comment event is supported now")
+		log.Info().Msgf("only issue_comment event is supported now, %T", e)
 	}
 }
 

@@ -1,11 +1,12 @@
 // Copyright 2020-2021 The Datafuse Authors.
 //
 // SPDX-License-Identifier: Apache-2.0.
-package plugins
+package runperf
 
 import (
 	"context"
 	githubcli "datafuselabs/test-infra/chatbots/github"
+	"datafuselabs/test-infra/chatbots/plugins"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	pluginName = "fusebench-local"
+	pluginName = "run-perf"
 )
 
 var (
@@ -25,10 +26,11 @@ var (
 )
 
 func init() {
-	RegisterIssueCommentHandler(pluginName, handleIssueComment)
+	log.Info().Msgf("regsited plugin: %s", pluginName)
+	plugins.RegisterIssueCommentHandler(pluginName, handleIssueComment)
 }
 
-func handleIssueComment(client *Agent, ic *github.IssueCommentEvent) error {
+func handleIssueComment(client *plugins.Agent, ic *github.IssueCommentEvent) error {
 	handler, err := newRunPerf(ic, log.With().Str("issue comment", "fusebench-local").Logger())
 	if err != nil {
 		return err
@@ -85,15 +87,20 @@ func handle(h *handler) error {
 	}
 	err = h.gc.CreateRepositoryDispatch("run-perf", h.Payloads)
 	if err != nil {
-		h.log.Error().Msgf("cannot create run- repository dispatch, %s", err.Error())
+		h.log.Error().Msgf("cannot create run-perf repository dispatch, %s", err.Error())
 		return err
 	}
+	// err = h.gc.PostComment(fmt.Sprintf("run performance on sha %s reference on %s", h.Payloads["CURRENT_BRANCH"], h.Payloads["REF_BRANCH"]))
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
 
 func handlerhelper(h *handler, sha string, lastTag string) error {
 	command := extractCommand(h.gc.CommentBody)
+	h.log.Log().Msgf(command)
 	matches := h.regexp.FindAllStringSubmatch(command, -1)
 	if matches == nil {
 		return fmt.Errorf("there is no matching regex")
