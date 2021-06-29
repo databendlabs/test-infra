@@ -1,5 +1,3 @@
-{{define "title"}}Benchmarking Status{{end}}
-
 {{define "content"}}
 <button id="top-navigator" class="mdl-button mdl-js-button mdl-button--fab hidden">
     <i class="material-icons">arrow_upward</i>
@@ -9,12 +7,14 @@
         <div id="filter-box" class="card-box">
             <ul id="filter-list" class="noBullets">
                 <li>Filter</li>
-                <li><select id="repo"><option>all repositories</option></select></li>
+                <li><select id="repo"><option value="">all repositories</option></select></li>
+                <li><select id="branch"><option value="">all branches</option></select></li>
                 &gt;&gt;
-                <li><select id="pull"><option>all pull requests</option></select></li>
-                <li><select id="sha"><option>all pull requests</option></select></li>
-                <li><select id="author"><option>all authors</option></select></li>
-                <li id="job-count"></li>
+                <li><select id="pull"><option value="">all pull requests</option></select></li>
+                <li><select id="author"><option value="">all authors</option></select></li>
+                <li><select id="action"><option value="">all actions</option></select></li>
+                <li><select id="state"><option value="">all states</option></select></li>
+                <li id="record-count"></li>
             </ul>
         </div>
     </aside>
@@ -30,9 +30,6 @@
                     <th>Current</th>
                     <th>Reference</th>
                     <th>Compare Result</th>
-                    <th>Job</th>
-                    <th>Started</th>
-                    <th>Duration</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -54,5 +51,4 @@
 
 </div>
 {{end}}
-
-{{template "page" (settings mobileUnfriendly lightMode "index" .)}}
+{{template "page" .}}

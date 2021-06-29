@@ -33,6 +33,8 @@ func main() {
 		GithubToken,
 		WebhookToken,
 		Address,
+		"/Users/zhihanzhang/Documents/go/src/test-infra/chatbots/cmd/templates/",
+		"/Users/zhihanzhang/Documents/go/src/test-infra/chatbots/cmd/static/",
 	)
 	server := hook.NewServer(cfg)
 	server.Start()

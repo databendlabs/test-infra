@@ -22,6 +22,7 @@ const (
 	helloEndpoint           string = "/hello"
 	payloadEndpoint         string = "/payload"
 	uploadEndpoint          string = "/upload"
+	indexEndpoint				string = "/"
 	benchmarkResultEndpoint string = "/benchmark/{pr:.*}/{commit:.*}"
 )
 
@@ -32,6 +33,8 @@ type Config struct {
 	GithubToken     string
 	WebhookToken    string //
 	Address         string // binded address
+	TemplateDir		string
+	StaticDir 		string
 }
 
 type Server struct {
@@ -39,7 +42,7 @@ type Server struct {
 	wg     sync.WaitGroup
 }
 
-func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logger zerolog.Logger, GithubToken, WebhookToken, Address string) Config {
+func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logger zerolog.Logger, GithubToken, WebhookToken, Address, templateDir, staticDir string) Config {
 	return Config{
 		StorageEndpoint: StorageBackend,
 		ctx:             ctx,
@@ -47,6 +50,8 @@ func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logge
 		GithubToken:     GithubToken,
 		WebhookToken:    WebhookToken,
 		Address:         Address,
+		TemplateDir: 	 templateDir,
+		StaticDir: 	   	 staticDir,
 	}
 }
 
@@ -125,7 +130,7 @@ func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
 
 	file, _, err := req.FormFile("upload")
 	if err != nil {
-		s.Config.Logger.Error().Msgf("unable to process compare result")
+		s.Config.Logger.Error().Msgf("unable to process compare result, %v", err.Error())
 		http.Error(w, err.Error(), 403)
 		return
 	}
@@ -145,8 +150,25 @@ func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+type Meta struct {
+	Repository string
+	PRNumber string
+	CommitSHA string
+	RunId string
+	Current string
+	Ref string
+	Compare string
+}
+
+type Metas struct {
+	Items []Meta
+}
+
 func (s *Server) RegistEndpoints() {
 	http.HandleFunc(helloEndpoint, hello)
 	http.HandleFunc(payloadEndpoint, s.payload)
 	http.HandleFunc(uploadEndpoint, s.upload)
+	m := Metas{Items: []Meta{{"1", "2", "3", "4", "5", "6","7"}}}
+	http.HandleFunc(indexEndpoint, s.handleSimpleTemplate("index.html", m))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 }
