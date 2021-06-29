@@ -58,11 +58,15 @@ func NewServer(cfg Config) Server {
 
 func (s *Server) Start() {
 	s.RegistEndpoints()
-	http.ListenAndServe(s.Config.Address, nil)
+	err := http.ListenAndServe(s.Config.Address, nil)
+	panic(err)
 }
 
 func hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "hello\n")
+	_, err := fmt.Fprintf(w, "hello\n")
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+	}
 }
 
 func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
@@ -113,7 +117,11 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
 	// Parse our multipart form, 10 << 20 specifies a maximum
 	// upload of 10 MB files.
-	req.ParseMultipartForm(10 << 20)
+	err := req.ParseMultipartForm(10 << 20)
+	if err != nil {
+		log.Error().Msgf("Unable to parse file form, %+v", err)
+		return
+	}
 
 	file, _, err := req.FormFile("upload")
 	if err != nil {
@@ -130,27 +138,11 @@ func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), 403)
 		return
 	}
-	filePath, err := s.buildFilePath(pr, sha)
-	if err != nil {
-		s.Config.Logger.Error().Msgf("unable to build storage file path")
-		return
-	}
-	filePath = s.Config.StorageEndpoint.SetStoragePath(filePath)
-	s.Config.Logger.Info().Msgf("storage path: %s", filePath)
-	err = s.Config.StorageEndpoint.Store(s.Config.ctx, fileBytes)
+	err = s.Config.StorageEndpoint.Store(s.Config.ctx, pr, sha, "compare.html", fileBytes)
 	if err != nil {
 		s.Config.Logger.Error().Msgf("unable to store result file, %s", err.Error())
 		return
 	}
-}
-
-func (s *Server) buildFilePath(pr, sha string) (string, error) {
-	file, err := s.Config.StorageEndpoint.BuildStoragePath(pr, sha)
-	if err != nil {
-		return "", err
-	}
-	result := s.Config.StorageEndpoint.SetStoragePath(file)
-	return result, nil
 }
 
 func (s *Server) RegistEndpoints() {
