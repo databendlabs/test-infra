@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	GITHUB_TOKEN  string
-	WEBHOOK_TOKEN string
-	Address       string
+	GithubToken  string
+	WebhookToken string
+	Address      string
 )
 
 func init() {
-	flag.StringVar(&GITHUB_TOKEN, "github-token", "", "chatbot github token")
-	flag.StringVar(&WEBHOOK_TOKEN, "webhook-token", "", "webhook token for chatbot server")
+	flag.StringVar(&GithubToken, "github-token", "", "chatbot github token")
+	flag.StringVar(&WebhookToken, "webhook-token", "", "webhook token for chatbot server")
 	flag.StringVar(&Address, "address", "", "address that chatbot server binds to")
 
 }
@@ -30,8 +30,8 @@ func main() {
 		},
 		context.Background(),
 		log.Logger,
-		GITHUB_TOKEN,
-		WEBHOOK_TOKEN,
+		GithubToken,
+		WebhookToken,
 		Address,
 	)
 	server := hook.NewServer(cfg)

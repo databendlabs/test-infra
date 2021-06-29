@@ -1,0 +1,58 @@
+{{define "title"}}Benchmarking Status{{end}}
+
+{{define "content"}}
+<button id="top-navigator" class="mdl-button mdl-js-button mdl-button--fab hidden">
+    <i class="material-icons">arrow_upward</i>
+</button>
+<div class="page-content">
+    <aside>
+        <div id="filter-box" class="card-box">
+            <ul id="filter-list" class="noBullets">
+                <li>Filter</li>
+                <li><select id="repo"><option>all repositories</option></select></li>
+                &gt;&gt;
+                <li><select id="pull"><option>all pull requests</option></select></li>
+                <li><select id="sha"><option>all pull requests</option></select></li>
+                <li><select id="author"><option>all authors</option></select></li>
+                <li id="job-count"></li>
+            </ul>
+        </div>
+    </aside>
+    <article>
+        <div class="table-container">
+            <table id="builds">
+                <thead>
+                <tr>
+                    <th>Repository</th>
+                    <th>PR Number</th>
+                    <th>Commit SHA</th>
+                    <th>Run Id</th>
+                    <th>Current</th>
+                    <th>Reference</th>
+                    <th>Compare Result</th>
+                    <th>Job</th>
+                    <th>Started</th>
+                    <th>Duration</th>
+                </tr>
+                </thead>
+                <tbody>
+                {{ range .Items}}
+                <tr>
+                    <td>{{ .Repository }}</td>
+                    <td>{{ .PRNumber }}</td>
+                    <td>{{ .CommitSHA }}</td>
+                    <td>{{ .RunId }}</td>
+                    <td>{{ .Current }}</td>
+                    <td>{{ .Ref }}</td>
+                    <td>{{ .Compare }}</td>
+                </tr>
+                {{ end}}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+</div>
+{{end}}
+
+{{template "page" (settings mobileUnfriendly lightMode "index" .)}}
