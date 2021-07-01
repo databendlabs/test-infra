@@ -66,7 +66,7 @@ func (r *FileStorage) GetBasePath() string {
 	return r.BasePath
 }
 
-
+// List all available
 func (r *FileStorage) List(ctx context.Context)([]meta, error) {
 	base := r.GetBasePath()
 	ans := make([]meta, 0)

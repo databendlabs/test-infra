@@ -6,9 +6,11 @@ import (
 	_ "datafuselabs/test-infra/chatbots/plugins/builddocker"
 	_ "datafuselabs/test-infra/chatbots/plugins/runperf"
 	"datafuselabs/test-infra/chatbots/utils"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"sync"
 
 	githubcli "datafuselabs/test-infra/chatbots/github"
@@ -21,6 +23,7 @@ import (
 const (
 	helloEndpoint           string = "/hello"
 	payloadEndpoint         string = "/payload"
+	statusEndpoint         string = "/status"
 	uploadEndpoint          string = "/upload"
 	indexEndpoint				string = "/"
 	benchmarkResultEndpoint string = "/benchmark/{pr:.*}/{commit:.*}"
@@ -150,25 +153,66 @@ func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type Meta struct {
-	Repository string
-	PRNumber string
-	CommitSHA string
-	RunId string
-	Current string
-	Ref string
-	Compare string
+// StatusMeta will receive update from github workflow actions
+type StatusMeta struct {
+	Organization string `json:"org,omitempty"`
+	Repository string `json:"repo,omitempty"`
+	PRNumber string `json:"pr,omitempty"`
+	CommitSHA string `json:"commitSHA,omitempty"`
+	RunId string `json:"run_id,omitempty"`
+	Author string `json:"author,omitempty"`
+	Current *string `json:"current,omitempty"`
+	Ref *string `json:"ref,omitempty"`
+	Compare string `json:"compare,omitempty"`
+	Status string`json:"status,omitempty"`
+	Conclusion string `json:"conclusion,omitempty"`
+	PRLink string`json:"PRLink,omitempty"`
+	CurrentLog string`json:"currentLog,omitempty"`
+	RefLog string`json:"refLog,omitempty"`
+}
+
+// status endpoint will receive status update from github workflow
+func (s *Server) status(w http.ResponseWriter, req *http.Request) {
+	// validate github token and webhook token
+	// Declare a new Person struct.
+	var status StatusMeta
+
+	// Try to decode the request body into the struct. If there is an error,
+	// respond to the client with the error message and a 400 status code.
+	err := json.NewDecoder(req.Body).Decode(&status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	jb, err := json.Marshal(status)
+
+	log.Info().Msgf(status.RunId)
+	run_id, err := strconv.Atoi(status.RunId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	state, err := githubcli.GetActionStatus(context.Background(), status.Organization, status.Repository, int64(run_id))
+	log.Info().Msgf("current status %s", state)
+	// Only store the latest metadata
+	err = s.Config.StorageEndpoint.Store(s.Config.ctx, status.PRNumber, status.CommitSHA, "meta.json", jb)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 }
 
 type Metas struct {
-	Items []Meta
+	Items []StatusMeta
 }
 
 func (s *Server) RegistEndpoints() {
 	http.HandleFunc(helloEndpoint, hello)
 	http.HandleFunc(payloadEndpoint, s.payload)
 	http.HandleFunc(uploadEndpoint, s.upload)
-	m := Metas{Items: []Meta{{"1", "2", "3", "4", "5", "6","7"}}}
+	http.HandleFunc(statusEndpoint, s.status)
+	m := Metas{Items: []StatusMeta{}}
 	http.HandleFunc(indexEndpoint, s.handleSimpleTemplate("index.html", m))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 }

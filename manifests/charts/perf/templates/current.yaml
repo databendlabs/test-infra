@@ -20,6 +20,9 @@ spec:
       imagePullSecrets:
       {{- toYaml . | nindent 8 }}
       {{- end }}
+      volumes:
+      - name: varlog
+        emptyDir: {}
       containers:
         - name: {{ .Chart.Name }}
           command:
@@ -28,11 +31,15 @@ spec:
             - |
               /bin/bash <<'EOF'
               echo "Start benchmarking on {{ .Values.current.name }}}"
-              /fuse-store &
+              /fuse-store &> /var/log/{{.Values.current.name}}-fuse-store.log &
               P1=$!
-              /fuse-query &
+              /fuse-query &> /var/log/{{.Values.current.name}}-fuse-query.log &
               P2=$!
-              wait $P1 $P2
+              tail -n+1 -f /var/log/{{.Values.current.name}}-fuse-store.log &
+              P3=$!
+              tail -n+1 -f /var/log/{{.Values.current.name}}-fuse-query.log &
+              P4=$!
+              wait $P1 $P2 $P3 $P4
               EOF
           securityContext:
           {{- toYaml .Values.securityContext | nindent 12 }}
@@ -41,6 +48,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: default
+          volumeMounts:
+          - name: varlog
+            mountPath: /var/log
           ports:
             - name: mysql
               containerPort: {{ .Values.configs.mysqlPort }}
@@ -84,4 +94,5 @@ spec:
       {{- with .Values.tolerations }}
       tolerations:
       {{- toYaml . | nindent 8 }}
+
   {{- end }}

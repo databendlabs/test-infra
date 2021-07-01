@@ -6,6 +6,7 @@ require (
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github/v35 v35.2.0
+	github.com/google/uuid v1.2.0
 	github.com/jnovack/flag v1.16.0
 	github.com/rs/zerolog v1.22.0
 	github.com/stretchr/testify v1.4.0

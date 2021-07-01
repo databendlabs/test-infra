@@ -8,13 +8,13 @@ import (
 	githubcli "datafuselabs/test-infra/chatbots/github"
 	"datafuselabs/test-infra/chatbots/plugins"
 	"fmt"
+	"github.com/google/go-github/v35/github"
+	guuid "github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/google/go-github/v35/github"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -80,11 +80,30 @@ func handle(h *handler) error {
 	}
 	err = handlerhelper(h, lastSHA, lastTag)
 	if err != nil {
-		if strings.Contains(err.Error(), "is not a org, member nor a collaborator") {
+		if strings.Contains(err.Error(), "is not an owner, member nor a collaborator") {
 			h.gc.PostComment(err.Error())
 		}
 		return err
 	}
+	id := guuid.New()
+	// Trigger docker build on current and reference branches
+	err = h.gc.CreateRepositoryDispatch("build_docker", map[string]string{"REF": h.Payloads["CURRENT_BRANCH"],
+																					"PR_NUMBER": h.Payloads["PR_NUMBER"],
+																					"LAST_COMMIT_SHA" : h.Payloads["LAST_COMMIT_SHA"],
+																					"UUID": id.String()})
+	if err != nil {
+		h.log.Error().Msgf("cannot create build docker repository dispatch on branch %s, %s", h.Payloads["CURRENT_BRANCH"], err.Error())
+		return err
+	}
+
+	err = h.gc.CreateRepositoryDispatch("build_docker", map[string]string{"REF": h.Payloads["REF_BRANCH"],
+		"PR_NUMBER": h.Payloads["PR_NUMBER"],
+		"LAST_COMMIT_SHA" : h.Payloads["LAST_COMMIT_SHA"], "UUID": id.String()})
+	if err != nil {
+		h.log.Error().Msgf("cannot create build docker repository dispatch on branch %s, %s",h.Payloads["REF_BRANCH"], err.Error())
+		return err
+	}
+
 	err = h.gc.CreateRepositoryDispatch("run-perf", h.Payloads)
 	if err != nil {
 		h.log.Error().Msgf("cannot create run-perf repository dispatch, %s", err.Error())
