@@ -40,6 +40,8 @@ func Test_handlerhelper(t *testing.T) {
 		authorAssociation   string
 		pr                  int
 		sha                 string
+		StartTime 			string
+		UUID string
 		lastTag             string
 		expectError         error
 		expectCurrentBranch string
@@ -56,8 +58,11 @@ func Test_handlerhelper(t *testing.T) {
 			expectError:         nil,
 			lastTag:             "v1.1.1-nightly",
 			expectCurrentBranch: "foo",
+			StartTime: "1",
+			UUID: "12",
 			expectRefBranch:     "master",
-			expectPayload:       map[string]string{"CURRENT_BRANCH": "foo", "PR_NUMBER": strconv.Itoa(233), "LAST_COMMIT_SHA": "foo", "REF_BRANCH": "master"},
+			expectPayload:       map[string]string{"CURRENT_BRANCH": "foo", "PR_NUMBER": strconv.Itoa(233),
+				"LAST_COMMIT_SHA": "foo", "REF_BRANCH": "master", "START_TIME": "1", "UUID": "12"},
 		},
 		{
 			name:                "newline",
@@ -67,10 +72,13 @@ func Test_handlerhelper(t *testing.T) {
 			pr:                  233,
 			lastTag:             "v1.1.1-nightly",
 			sha:                 "bar",
+			UUID: "12",
 			expectError:         nil,
+			StartTime: "1",
 			expectCurrentBranch: "bar",
 			expectRefBranch:     "v1.1.1-nightly",
-			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233), "LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly"},
+			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233),
+				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly", "START_TIME": "1", "UUID": "12"},
 		},
 		{
 			name:                "laetst",
@@ -81,9 +89,12 @@ func Test_handlerhelper(t *testing.T) {
 			lastTag:             "v1.1.1-nightly",
 			sha:                 "bar",
 			expectError:         nil,
+			StartTime: "1",
+			UUID: "12",
 			expectCurrentBranch: "bar",
 			expectRefBranch:     "v1.1.1-nightly",
-			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233), "LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly"},
+			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233),
+				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly", "START_TIME": "1", "UUID": "12"},
 		},
 		{
 			name:                "release",
@@ -93,10 +104,13 @@ func Test_handlerhelper(t *testing.T) {
 			pr:                  233,
 			lastTag:             "v1.1.1-nightly",
 			sha:                 "bar",
+			StartTime: "1",
+			UUID: "12",
 			expectError:         nil,
 			expectCurrentBranch: "bar",
 			expectRefBranch:     "v1.2.3-nightly",
-			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233), "LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.2.3-nightly"},
+			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233),
+				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.2.3-nightly", "START_TIME": "1", "UUID": "12"},
 		},
 		{
 			name:                "empty",
@@ -105,6 +119,7 @@ func Test_handlerhelper(t *testing.T) {
 			authorAssociation:   "OWNER",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
+			StartTime: "1",
 			sha:                 "bar",
 			expectCurrentBranch: "",
 			expectRefBranch:     "",
@@ -117,6 +132,7 @@ func Test_handlerhelper(t *testing.T) {
 			authorAssociation:   "OWNER",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
+			StartTime: "1",
 			sha:                 "bar",
 			expectCurrentBranch: "",
 			expectRefBranch:     "",
@@ -129,6 +145,7 @@ func Test_handlerhelper(t *testing.T) {
 			authorAssociation:   "OWNER",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
+			StartTime: "1",
 			sha:                 "bar",
 			expectCurrentBranch: "",
 			expectRefBranch:     "",
@@ -141,6 +158,7 @@ func Test_handlerhelper(t *testing.T) {
 			authorAssociation:   "OWNER",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
+			StartTime: "1",
 			sha:                 "bar",
 			expectCurrentBranch: "",
 			expectRefBranch:     "",
@@ -150,7 +168,7 @@ func Test_handlerhelper(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := newFakeHandler(tt.comment, tt.author, tt.authorAssociation, tt.pr)
-			assert.Equal(t, handlerhelper(handler, tt.sha, tt.lastTag), tt.expectError)
+			assert.Equal(t, handlerhelper(handler, tt.sha, tt.lastTag, tt.StartTime, tt.UUID), tt.expectError)
 			assert.Equal(t, handler.CurrentBranch, tt.expectCurrentBranch)
 			assert.Equal(t, handler.RefBranch, tt.expectRefBranch)
 			assert.Equal(t, handler.Payloads, tt.expectPayload)
