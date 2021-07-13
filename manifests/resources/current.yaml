@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "perf.current"
+  labels:
+    app: "{{ .CURRENT }}"
+
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .CURRENT }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ .CURRENT }}"
+    spec:
+
+      volumes:
+        - name: varlog
+          emptyDir: {}
+      containers:
+        - name: "perf-current"
+          command:
+            - sh
+            - "-c"
+            - |
+              /bin/bash <<'EOF'
+              echo "Start benchmarking on {{ .CURRENT }}}"
+              /fuse-store &> /var/log/{{ .CURRENT }}}-fuse-store.log &
+              P1=$!
+              /fuse-query &> /var/log/{{ .CURRENT }}}}-fuse-query.log &
+              P2=$!
+              tail -n+1 -f /var/log/{{ .CURRENT }}}-fuse-store.log &
+              P3=$!
+              tail -n+1 -f /var/log/{{ .CURRENT }}}-fuse-query.log &
+              P4=$!
+              wait $P1 $P2 $P3 $P4
+              EOF
+          image: "zhihanz/datafuse:{{ .CURRENT }}"
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: default
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+          ports:
+            - name: mysql
+              containerPort: 3307
+              protocol: TCP
+            - name: clickhouse
+              containerPort: 9001
+              protocol: TCP
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+            - name: metric
+              containerPort: 7071
+              protocol: TCP
+            - name: rpc
+              containerPort: 9091
+              protocol: TCP
+          # want to see query log only and close log triggered by kubeproxy
+          # livenessProbe:
+          #   httpGet:
+          #     path: /v1/hello
+          #     port: http
+          # readinessProbe:
+          #  httpGet:
+          #    path: /v1/configs
+          #    port: http
+          resources:
+            requests:
+              memory: "{{.MEMORY}}"
+              cpu: "{{.CPU}}"
+            limits:
+              memory: "{{.MEMORY}}"
+              cpu: "{{.CPU}}"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: test-branch
+                    operator: In
+                    values:
+                      - {{ .CURRENT }}
