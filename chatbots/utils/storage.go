@@ -2,17 +2,57 @@ package utils
 
 import (
 	"context"
-	"io/fs"
+	badger "github.com/dgraph-io/badger/v3"
+	"github.com/tencentyun/cos-go-sdk-v5"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type StorageInterface interface {
-	Store(ctx context.Context, pr, sha, filename string, info []byte) error
-	Retrieve(ctx context.Context, pr, sha, filename string) ([]byte, error)
+	Store(ctx context.Context, owner, repo, pr, sha, uuid, filename string, info []byte) error
+	Retrieve(ctx context.Context, owner, repo, pr, sha, uuid, filename string) ([]byte, error)
 	GetBasePath() string
-	List(ctx context.Context)([]meta, error)
+	GetFilePath(owner, repo, pr, sha, uuid, filename string) string
+}
+
+type COSStorage struct {
+	url string
+	secretId string
+	secretKey string
+	client *cos.Client
+}
+
+func (r *COSStorage) Store(ctx context.Context, owner, repo, pr, sha, uuid, filename string, data []byte) error {
+	location := filepath.Join(owner, repo, pr, sha, uuid, filename)
+	f := strings.NewReader(string(data))
+	_, err :=  r.client.Object.Put(ctx, location, f, nil)
+	return err
+}
+
+func (r *COSStorage) Retrieve(ctx context.Context, owner, repo, pr, sha, uuid, filename string) ([]byte, error) {
+	location := filepath.Join(owner, repo, pr, sha, uuid, filename)
+	resp, err :=  r.client.Object.Get(ctx, location,nil)
+	if err != nil {
+		return nil, err
+	}
+	bs, _ := ioutil.ReadAll(resp.Body)
+	err = resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	return bs, nil
+}
+
+func (r *COSStorage) GetURL(ctx context.Context, owner, repo, pr, sha, uuid, filename string) string {
+	location := filepath.Join(owner, repo, pr, sha, uuid, filename)
+	u :=  r.client.Object.GetObjectURL(location)
+	return u.String()
+}
+
+func (r *COSStorage) GetBasePath() string {
+	return r.url
 }
 
 type FileStorage struct {
@@ -21,7 +61,8 @@ type FileStorage struct {
 }
 
 // Store define the location you want to store your files
-func (r *FileStorage) Store(ctx context.Context, pr, sha, filename string, data []byte) error {
+// TODO refactor
+func (r *FileStorage) Store(ctx context.Context, owner, repo, pr, sha, uuid, filename string, data []byte) error {
 	basePath, err := filepath.Abs(r.GetBasePath())
 	if err != nil {
 		return err
@@ -53,8 +94,8 @@ func (r *FileStorage) Store(ctx context.Context, pr, sha, filename string, data 
 }
 
 // Retrieve will read the file and return the data
-func (r *FileStorage) Retrieve(ctx context.Context, pr, sha, filename string) ([]byte, error) {
-	address := filepath.Join(r.BasePath, pr, sha, filename)
+func (r *FileStorage) Retrieve(ctx context.Context, owner, repo, pr, sha, uuid, filename string) ([]byte, error) {
+	address := filepath.Join(r.BasePath, owner, repo, pr, sha, uuid, filename)
 	content, err := ioutil.ReadFile(address)
 	if err != nil {
 		return nil, err
@@ -66,31 +107,10 @@ func (r *FileStorage) GetBasePath() string {
 	return r.BasePath
 }
 
-// List all available
-func (r *FileStorage) List(ctx context.Context)([]meta, error) {
-	base := r.GetBasePath()
-	ans := make([]meta, 0)
-	err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			return nil
-		}
-		m := meta{PrNumber: path}
-
-		err = filepath.Walk(filepath.Join(base, path), func(path string, info fs.FileInfo, err error) error {
-			if !info.IsDir() {
-				return nil
-			}
-			m.CommitSHA = path
-			ans = append(ans, m.DeepCopy())
-			// TODO parsing meta data
-			return nil
-		})
-		return nil
-	})
-	return ans, err
-
+func (r *FileStorage) GetFilePath(owner, repo, pr, sha, uuid, filename string) string {
+	address := filepath.Join(r.BasePath, owner, repo, pr, sha, uuid, filename)
+	return address
 }
-
 
 type meta struct {
 	RunID string `json:"run_id"`
@@ -100,6 +120,48 @@ type meta struct {
 	RefLog string `json:"ref_log"`
 	PrNumber string `json:"pr_number"`
 	CommitSHA string `json:"commit_sha"`
+}
+
+// MetaStore backed by badgerDB (for actions' metadata management)
+// Tentative storage schema:
+// build-docker: mainly need for UUID based Get and Update
+// dispatchName/org/repo/pr/commitSHA/UUID/Status
+// run-perf: need two kinds of api, one for timestamp based reverse iteration
+// one for status management
+// report/StartTime/DispatchName/Org/Repo/PR/commitSHA// -> meta json
+type MetaStore struct {
+	path string
+	DB *badger.DB
+}
+
+func (m *MetaStore) Store(keys []string, value []byte) error {
+	key := strings.Join(keys, "/")
+	err := m.DB.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry([]byte(key), value)
+		err := txn.SetEntry(e)
+		return err
+	})
+	return err
+}
+
+func (m *MetaStore) GetCopy(keys []string) ([]byte, error) {
+	key := strings.Join(keys, "/")
+	var value []byte
+	err := m.DB.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		// Alternatively, you could also use item.ValueCopy().
+		value, err = item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	return value, err
 }
 
 func (m meta) DeepCopy() meta {

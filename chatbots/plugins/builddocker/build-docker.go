@@ -84,7 +84,7 @@ func handle(h *handler) error {
 		}
 		return err
 	}
-	err = h.gc.CreateRepositoryDispatch("build_docker", h.Payloads)
+	err = h.gc.CreateRepositoryDispatch("build-docker", h.Payloads)
 	if err != nil {
 		h.log.Error().Msgf("cannot create run-perf repository dispatch, %s", err.Error())
 		return err

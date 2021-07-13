@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"sync"
 
 	githubcli "datafuselabs/test-infra/chatbots/github"
@@ -31,6 +30,7 @@ const (
 
 type Config struct {
 	StorageEndpoint utils.StorageInterface
+	MetaStorage utils.MetaStore
 	ctx             context.Context
 	Logger          zerolog.Logger
 	GithubToken     string
@@ -110,7 +110,7 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 				if err != nil {
 					s.Config.Logger.Error().Msgf("Cannot build github client given event %s, %s", *e.Action, err.Error())
 				}
-				agent := plugins.NewAgent(client)
+				agent := plugins.NewAgent(client, &s.Config.MetaStorage)
 				err = h(agent, e)
 				if err != nil {
 					s.Config.Logger.Error().Msgf("Cannot process handler %s, %s", n, err.Error())
@@ -118,38 +118,57 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 			}(name, handler)
 		}
 	default:
-		log.Info().Msgf("only issue_comment event is supported now, %T", e)
+		log.Debug().Msgf("only issue_comment event is supported now, %T", e)
 	}
 }
 
-func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
-	// Parse our multipart form, 10 << 20 specifies a maximum
-	// upload of 10 MB files.
-	err := req.ParseMultipartForm(10 << 20)
-	if err != nil {
-		log.Error().Msgf("Unable to parse file form, %+v", err)
-		return
+func (s *Server) processReqFile(req *http.Request, fileName string) error{
+	file, _, err := req.FormFile(fileName)
+	if err == http.ErrMissingFile {
+		return nil
 	}
-
-	file, _, err := req.FormFile("upload")
 	if err != nil {
-		s.Config.Logger.Error().Msgf("unable to process compare result, %v", err.Error())
-		http.Error(w, err.Error(), 403)
-		return
+		s.Config.Logger.Error().Msgf("unable to process file %s result, %v", fileName, err.Error())
+		return fmt.Errorf("unable to process file %s result, %v", fileName, err.Error())
 	}
+	owner := req.FormValue("OWNER")
+	repo := req.FormValue("REPO")
 	pr := req.FormValue("PR")
 	sha := req.FormValue("SHA")
+	uuid := req.FormValue("UUID")
+
 	s.Config.Logger.Info().Msgf("received SHA %s from PR %s", sha, pr)
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		s.Config.Logger.Error().Msgf("unable to read result")
-		http.Error(w, err.Error(), 403)
-		return
+		return fmt.Errorf("unable to read file %s result, %v", fileName, err.Error())
 	}
-	err = s.Config.StorageEndpoint.Store(s.Config.ctx, pr, sha, "compare.html", fileBytes)
+	err = s.Config.StorageEndpoint.Store(s.Config.ctx, owner, repo, pr, sha, uuid, fileName, fileBytes)
 	if err != nil {
 		s.Config.Logger.Error().Msgf("unable to store result file, %s", err.Error())
+		return fmt.Errorf("unable to store file %s result, %v", fileName, err.Error())
+	}
+	return nil
+}
+
+// handle three type of upload fields
+// log file
+// compare file
+func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
+	// Parse our multipart form, 10 << 20 specifies a maximum
+	// upload of 10 MB files.
+	err := req.ParseMultipartForm(32 << 20)
+	if err != nil {
+		log.Error().Msgf("Unable to parse file form, %+v", err)
 		return
+	}
+	files := []string{"compare.html", "current.log", "ref.log"}
+	for _, f := range files {
+		err = s.processReqFile(req, f)
+		if err != nil {
+			http.Error(w, err.Error(), 503)
+			return
+		}
 	}
 }
 
@@ -161,14 +180,17 @@ type StatusMeta struct {
 	CommitSHA string `json:"commitSHA,omitempty"`
 	RunId string `json:"run_id,omitempty"`
 	Author string `json:"author,omitempty"`
-	Current *string `json:"current,omitempty"`
-	Ref *string `json:"ref,omitempty"`
+	UUID string `json:"uuid,omitempty"`
+	DispatchName string `json:"dispatch_name,omitempty"`
+	Current string `json:"current,omitempty"`
+	Ref string `json:"ref,omitempty"`
 	Compare string `json:"compare,omitempty"`
 	Status string`json:"status,omitempty"`
 	Conclusion string `json:"conclusion,omitempty"`
 	PRLink string`json:"PRLink,omitempty"`
 	CurrentLog string`json:"currentLog,omitempty"`
 	RefLog string`json:"refLog,omitempty"`
+	StartTime string `json:"start_time,omitempty"`
 }
 
 // status endpoint will receive status update from github workflow
@@ -185,22 +207,39 @@ func (s *Server) status(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	jb, err := json.Marshal(status)
-
-	log.Info().Msgf(status.RunId)
-	run_id, err := strconv.Atoi(status.RunId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	switch status.DispatchName {
+	case "build-docker":
+		err := s.HandleStatus(status)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	case "run-perf":
+		err := s.HandleStatus(status)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		err = s.HandleReport(status, jb)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	default:
+		http.Error(w, fmt.Sprintf("Not support dispatch %s for now", status.DispatchName), http.StatusBadRequest)
 		return
 	}
-	state, err := githubcli.GetActionStatus(context.Background(), status.Organization, status.Repository, int64(run_id))
-	log.Info().Msgf("current status %s", state)
-	// Only store the latest metadata
-	err = s.Config.StorageEndpoint.Store(s.Config.ctx, status.PRNumber, status.CommitSHA, "meta.json", jb)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+}
 
+func (s *Server) HandleStatus(meta StatusMeta) error {
+	return s.Config.MetaStorage.Store([]string{meta.DispatchName,
+		meta.Organization, meta.Repository,
+		meta.PRNumber, meta.CommitSHA, meta.UUID}, []byte(meta.Status))
+}
+
+func (s *Server) HandleReport(meta StatusMeta, jb []byte) error {
+	key := []string{"report", meta.StartTime, meta.Organization, meta.Repository, meta.PRNumber, meta.CommitSHA, meta.UUID}
+	return s.Config.MetaStorage.Store(key, jb)
 }
 
 type Metas struct {

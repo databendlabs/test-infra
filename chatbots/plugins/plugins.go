@@ -19,16 +19,18 @@ var (
 type Agent struct {
 	GithubClient *githubcli.GithubClient
 	Logger       zerolog.Logger
-	Store        utils.StorageInterface
+	Store        *utils.StorageInterface
+	MetaStore 	*utils.MetaStore
 }
 
 // IssueCommentHandler defines the function contract for a github.IssueCommentEvent handler.
 type IssueCommentHandler func(*Agent, *github.IssueCommentEvent) error
 
-func NewAgent(gitClient *githubcli.GithubClient) *Agent {
+func NewAgent(gitClient *githubcli.GithubClient, metaStore *utils.MetaStore) *Agent {
 	return &Agent{
 		GithubClient: gitClient,
 		Logger:       log.With().Str("test-infra", "agent").Logger(),
+		MetaStore: metaStore,
 	}
 }
 func RegisterIssueCommentHandler(name string, fn IssueCommentHandler) {

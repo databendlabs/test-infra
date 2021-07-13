@@ -7,7 +7,10 @@ import (
 	"context"
 	githubcli "datafuselabs/test-infra/chatbots/github"
 	"datafuselabs/test-infra/chatbots/plugins"
+	"datafuselabs/test-infra/chatbots/utils"
+	"datafuselabs/test-infra/pkg/provider"
 	"fmt"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/google/go-github/v35/github"
 	guuid "github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -15,6 +18,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -31,7 +36,7 @@ func init() {
 }
 
 func handleIssueComment(client *plugins.Agent, ic *github.IssueCommentEvent) error {
-	handler, err := newRunPerf(ic, log.With().Str("issue comment", "fusebench-local").Logger())
+	handler, err := newRunPerf(ic, log.With().Str("issue comment", "fusebench-local").Logger(), client)
 	if err != nil {
 		return err
 	}
@@ -75,19 +80,22 @@ func handle(h *handler) error {
 	h.log.Info().Msgf(h.gc.GetIssueState())
 	lastSHA := h.gc.GetLastCommitSHA()
 	lastTag, err := h.gc.GetLatestTag()
+	id := guuid.New()
 	if err != nil {
 		return err
 	}
-	err = handlerhelper(h, lastSHA, lastTag)
+	start := strconv.Itoa(int(time.Now().Unix()))
+	err = handlerhelper(h, lastSHA, lastTag, start, id.String())
 	if err != nil {
 		if strings.Contains(err.Error(), "is not an owner, member nor a collaborator") {
 			h.gc.PostComment(err.Error())
 		}
 		return err
 	}
-	id := guuid.New()
+	wg := new(sync.WaitGroup)
+
 	// Trigger docker build on current and reference branches
-	err = h.gc.CreateRepositoryDispatch("build_docker", map[string]string{"REF": h.Payloads["CURRENT_BRANCH"],
+	err = h.gc.CreateRepositoryDispatch("build-docker", map[string]string{"REF": h.Payloads["CURRENT_BRANCH"],
 																					"PR_NUMBER": h.Payloads["PR_NUMBER"],
 																					"LAST_COMMIT_SHA" : h.Payloads["LAST_COMMIT_SHA"],
 																					"UUID": id.String()})
@@ -96,14 +104,19 @@ func handle(h *handler) error {
 		return err
 	}
 
-	err = h.gc.CreateRepositoryDispatch("build_docker", map[string]string{"REF": h.Payloads["REF_BRANCH"],
+	go h.waitToReady(wg, h.Payloads["CURRENT_BRANCH"], id.String())
+
+	err = h.gc.CreateRepositoryDispatch("build-docker", map[string]string{"REF": h.Payloads["REF_BRANCH"],
 		"PR_NUMBER": h.Payloads["PR_NUMBER"],
 		"LAST_COMMIT_SHA" : h.Payloads["LAST_COMMIT_SHA"], "UUID": id.String()})
+
 	if err != nil {
 		h.log.Error().Msgf("cannot create build docker repository dispatch on branch %s, %s",h.Payloads["REF_BRANCH"], err.Error())
 		return err
 	}
+	go h.waitToReady(wg, h.Payloads["REF_BRANCH"], id.String())
 
+	wg.Wait()
 	err = h.gc.CreateRepositoryDispatch("run-perf", h.Payloads)
 	if err != nil {
 		h.log.Error().Msgf("cannot create run-perf repository dispatch, %s", err.Error())
@@ -117,7 +130,7 @@ func handle(h *handler) error {
 	return nil
 }
 
-func handlerhelper(h *handler, sha string, lastTag string) error {
+func handlerhelper(h *handler, sha string, lastTag, startTime, uuid string) error {
 	command := extractCommand(h.gc.CommentBody)
 	h.log.Log().Msgf(command)
 	matches := h.regexp.FindAllStringSubmatch(command, -1)
@@ -140,15 +153,44 @@ func handlerhelper(h *handler, sha string, lastTag string) error {
 	}
 	h.CurrentBranch = sha
 	h.log.Info().Msgf("current testing branch: %s, reference branch: %s", h.CurrentBranch, h.RefBranch)
-	err = extractPayload(h, sha)
+	err = extractPayload(h, sha, startTime, uuid)
 	return err
 }
 
-func extractPayload(h *handler, sha string) error {
+func (h *handler) checkStatus(dispatchName, org, repo, pr, commit, uuid string) (string, error) {
+	sb, err :=  h.metaStore.GetCopy([]string{dispatchName, org, repo, pr, commit, uuid})
+	if err == badger.ErrKeyNotFound {
+		return "NOT_FOUND", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return string(sb), nil
+}
+func (h *handler) waitToReady(wg *sync.WaitGroup, branch, id string) {
+	wg.Add(1)
+	defer wg.Done()
+	// wait for 30min until docker is ready
+	err := provider.RetryUntilTrue(fmt.Sprintf("build-%s", branch), 180, func()(bool, error) {
+		status, err := h.checkStatus("build-docker", h.gc.Owner, h.gc.Repo, h.Payloads["PR_NUMBER"], h.Payloads["LAST_COMMIT_SHA"], id)
+		if err != nil {
+			return false, err
+		}
+		h.log.Debug().Msgf("current docker build status: %s", status)
+		return status == "SUCCESS", nil
+	})
+	if err != nil {
+		h.log.Error().Msgf("docker build failed repository dispatch on branch %s, %s", h.Payloads["CURRENT_BRANCH"], err.Error())
+	}
+}
+
+func extractPayload(h *handler, sha, start, uuid string) error {
 	h.Payloads["CURRENT_BRANCH"] = h.CurrentBranch
 	h.Payloads["PR_NUMBER"] = strconv.Itoa(h.gc.Pr)
 	h.Payloads["LAST_COMMIT_SHA"] = sha
 	h.Payloads["REF_BRANCH"] = h.RefBranch
+	h.Payloads["START_TIME"] = start // for reverse lookup
+	h.Payloads["UUID"] = uuid
 	return nil
 
 }
@@ -173,9 +215,12 @@ type handler struct {
 
 	// define a series of client-payloads that will be posted to workflow
 	Payloads map[string]string
+
+	// define external database store metadata
+	metaStore *utils.MetaStore
 }
 
-func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger) (*handler, error) {
+func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger, client *plugins.Agent) (*handler, error) {
 	githubCli, err := githubcli.NewGithubClient(context.Background(), e)
 	if err != nil {
 		log.Error().Msgf("Unable to initialize github client given issue comment event %s, %s", e.GetComment().String(), err.Error())
@@ -187,5 +232,6 @@ func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger) (*handler, erro
 		gc:       githubCli,
 		log:      log,
 		Payloads: make(map[string]string),
+		metaStore: client.MetaStore,
 	}, nil
 }
