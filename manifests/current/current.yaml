@@ -4,15 +4,20 @@ metadata:
   name: "perf.current"
   labels:
     app: "{{ .CURRENT }}"
+    tag: current
 
 spec:
   selector:
     matchLabels:
       app: "{{ .CURRENT }}"
+      tag: current
+
   template:
     metadata:
       labels:
         app: "{{ .CURRENT }}"
+        tag: current
+
     spec:
 
       volumes:
@@ -25,14 +30,14 @@ spec:
             - "-c"
             - |
               /bin/bash <<'EOF'
-              echo "Start benchmarking on {{ .CURRENT }}}"
-              /fuse-store &> /var/log/{{ .CURRENT }}}-fuse-store.log &
+              echo "Start benchmarking on {{ .CURRENT }}"
+              /fuse-store &> /var/log/{{ .CURRENT }}-fuse-store.log &
               P1=$!
-              /fuse-query &> /var/log/{{ .CURRENT }}}}-fuse-query.log &
+              /fuse-query &> /var/log/{{ .CURRENT }}-fuse-query.log &
               P2=$!
-              tail -n+1 -f /var/log/{{ .CURRENT }}}-fuse-store.log &
+              tail -n+1 -f /var/log/{{ .CURRENT }}-fuse-store.log &
               P3=$!
-              tail -n+1 -f /var/log/{{ .CURRENT }}}-fuse-query.log &
+              tail -n+1 -f /var/log/{{ .CURRENT }}-fuse-query.log &
               P4=$!
               wait $P1 $P2 $P3 $P4
               EOF

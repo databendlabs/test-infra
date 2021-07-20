@@ -4,17 +4,21 @@ metadata:
   name: "perf.ref"
   labels:
     app: "{{ .REF }}"
+    tag: ref
 
 spec:
   selector:
     matchLabels:
       app: "{{ .REF }}"
+      tag: ref
+
   template:
     metadata:
       labels:
         app: "{{ .REF }}"
-    spec:
+        tag: ref
 
+    spec:
       volumes:
         - name: varlog
           emptyDir: {}
@@ -25,14 +29,14 @@ spec:
             - "-c"
             - |
               /bin/bash <<'EOF'
-              echo "Start benchmarking on {{ .REF }}}"
-              /fuse-store &> /var/log/{{ .REF }}}-fuse-store.log &
+              echo "Start benchmarking on {{ .REF }}"
+              /fuse-store &> /var/log/{{ .REF }}-fuse-store.log &
               P1=$!
-              /fuse-query &> /var/log/{{ .REF }}}}-fuse-query.log &
+              /fuse-query &> /var/log/{{ .REF }}-fuse-query.log &
               P2=$!
-              tail -n+1 -f /var/log/{{ .REF }}}-fuse-store.log &
+              tail -n+1 -f /var/log/{{ .REF }}-fuse-store.log &
               P3=$!
-              tail -n+1 -f /var/log/{{ .REF }}}-fuse-query.log &
+              tail -n+1 -f /var/log/{{ .REF }}-fuse-query.log &
               P4=$!
               wait $P1 $P2 $P3 $P4
               EOF
