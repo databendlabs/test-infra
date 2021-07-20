@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: current-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: "{{ .CURRENT }}"
+
+  ports:
+    # Default port for clickhouse service
+    - protocol: TCP
+      port: 9001
+      targetPort: 9001

@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: perf-tool-current
+spec:
+  template:
+    spec:
+      containers:
+        - name: perf-tool-current
+          image: zhihanz/perf-tool:dns
+          command:
+            - sh
+            - "-c"
+            - |
+              /bin/bash <<'EOF'
+              echo "Start benchmarking on {{ .CURRENT }}"
+              mkdir -p result
+              python3 perfs.py --region {{ .REGION }} --bucket {{ .BUCKET }} \
+                                --path {{ .LEFT }} --secretID {{ .SECRET_ID }} \
+                                --secretKey {{ .SECRET_KEY }} --type COS \
+                                --bin ./fuse-benchmark --output result \
+                                --host current-service.default.svc.cluster.local --port 9001
+
+              EOF
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: test-branch
+                    operator: In
+                    values:
+                      - {{ .CURRENT }}
+  backoffLimit: 4

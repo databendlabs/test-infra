@@ -148,6 +148,22 @@ func (c *KIND) ClusterCreate(*kingpin.ParseContext) error {
 	return nil
 }
 
+// ClusterRunning will check on whether cluster is still running
+func (c *KIND) ClusterRunning(*kingpin.ParseContext) error {
+	for _, deployment := range c.kindResources {
+		CreateWithConfigFile := cluster.CreateWithRawConfig(deployment.Content)
+
+		err := c.kindProvider.Create(c.DeploymentVars["CLUSTER_NAME"], CreateWithConfigFile)
+		if err != nil && strings.Contains(err.Error(), "node(s) already exist"){
+			return nil
+		} else {
+			return err
+		}
+	}
+	// created a new cluster
+	return nil
+}
+
 // ClusterDelete deletes a k8s cluster.
 func (c *KIND) ClusterDelete(*kingpin.ParseContext) error {
 	err := c.kindProvider.Delete(c.DeploymentVars["CLUSTER_NAME"], c.kubeconfig)

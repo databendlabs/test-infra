@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: ref-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: "{{ .REF }}"
+    tag: ref
+
+  ports:
+    # Default port for clickhouse service
+    - protocol: TCP
+      port: 9001
+      targetPort: 9001

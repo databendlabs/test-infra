@@ -1,4 +1,4 @@
-package main // import "github.com/prometheus/test-infra/infra"
+package main
 
 import (
 	"fmt"
@@ -40,7 +40,8 @@ func main() {
 		Action(k.ClusterCreate)
 	k8sKINDCluster.Command("delete", "kind cluster delete -f File -v PR_NUMBER:$PR_NUMBER -v CLUSTER_NAME:$CLUSTER_NAME").
 		Action(k.ClusterDelete)
-
+	k8sKINDCluster.Command("check-running", "gke nodes check-running -v CLUSTER_NAME:$CLUSTER_NAME").
+		Action(k.ClusterRunning)
 	// K8s resource operations.
 	k8sKINDResource := k8sKIND.Command("resource", `Apply and delete different k8s resources - deployments, services, config maps etc.`).
 		Action(k.NewK8sProvider).

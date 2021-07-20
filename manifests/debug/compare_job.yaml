@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: perf-tool-compare
+spec:
+  template:
+    spec:
+      containers:
+        - name: perf-tool-compare
+          image: zhihanz/perf-tool:dns
+          command:
+            - sh
+            - "-c"
+            - |
+              /bin/bash <<'EOF'
+              echo "Start compare"
+              mkdir -p current
+              mkdir -p ref
+              mkdir -p result
+              python3 compare.py --region ap-nanjing  \
+                                --bucket test-1306375239 --secretID AKIDMWQ3PUIo54mDPL1QYQ1LOAftrZ0A4g27  \
+                                --secretKey pNfhRu72g38xVmlUxrZ3JL7ewyjFVVFj --type COS \
+                                --releaser ./current --pull ./ref \
+                                --rpath benchmark/current/ --ppath benchmark/ref/ -o benchmark/compare
+
+              EOF
+      restartPolicy: Never
+  backoffLimit: 4
