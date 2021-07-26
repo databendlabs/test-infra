@@ -1,0 +1,28 @@
+# dindrunnerdeployment.yaml
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: datafuse-test-infra-runners
+spec:
+  replicas: 2
+  template:
+    spec:
+      image: zhihanz/actions-runner-dind:master
+      dockerdWithinRunnerContainer: true
+      repository: zhihanz/fuse-query
+      env: []
+      # You can mount some of the shared volumes to the dind container using dockerVolumeMounts, like any other volume mounting.
+      # NOTE: in case you want to use an hostPath like the following example, make sure that Kubernetes doesn't schedule more than one runner
+      # per physical host. You can achieve that by setting pod anti-affinity rules and/or resource requests/limits.
+      volumes:
+        - name: docker-extra
+          hostPath:
+            path: /mnt/docker-extra
+            type: DirectoryOrCreate
+        - name: repo
+          hostPath:
+            path: /mnt/repo
+            type: DirectoryOrCreate
+      dockerVolumeMounts:
+        - mountPath: /var/lib/docker
+          name: docker-extra
