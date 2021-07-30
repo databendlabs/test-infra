@@ -21,24 +21,20 @@ spec:
         - name: docker-extra
           persistentVolumeClaim:
             claimName: cache
-        - name: sccache
-          hostPath:
-            path: /mnt/.cache/sccache
-            type: DirectoryOrCreate
 
         - name: cache
           persistentVolumeClaim:
             claimName: cache
-        - name: modules
-          hostPath:
-            path: /lib/modules
-            type: Directory
-        - name: cgroup
-          hostPath:
-            path: /sys/fs/cgroup
-            type: Directory
-        - name: dind-storage
-          emptyDir: { }
+#        - name: modules
+#          hostPath:
+#            path: /lib/modules
+#            type: Directory
+#        - name: cgroup
+#          hostPath:
+#            path: /sys/fs/cgroup
+#            type: Directory
+#        - name: dind-storage
+#          emptyDir: { }
       dockerVolumeMounts:
         - mountPath: /var/lib/docker
           name: docker-extra
@@ -48,13 +44,13 @@ spec:
       volumeMounts:
         - mountPath: /home/runner/.cache/sccache # $HOME/.cache/sccache
           name: cache
-        - mountPath: /lib/modules
-          name: modules
-          readOnly: true
-        - mountPath: /sys/fs/cgroup
-          name: cgroup
-        - name: dind-storage
-          mountPath: /var/lib/docker
+#        - mountPath: /lib/modules
+#          name: modules
+#          readOnly: true
+#        - mountPath: /sys/fs/cgroup
+#          name: cgroup
+#        - name: dind-storage
+#          mountPath: /var/lib/docker
 
       # Total amount of local storage resources required for runner volume mount.
       # The default limit is undefined.
