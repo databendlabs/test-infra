@@ -33,4 +33,4 @@ spec:
                     operator: In
                     values:
                       - {{ .CURRENT }}
-  backoffLimit: 4
+  backoffLimit: 10
