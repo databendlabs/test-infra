@@ -20,8 +20,9 @@ AWS_DEFAULT_REGION ?= Not public
 BUCKET ?= Not public
 AWS_ACCESS_KEY_ID ?= Not public
 AWS_SECRET_ACCESS_KEY ?= Not public
+ENDPOINT ?= Not public
 DELETE_CLUSTER_AFTER_RUN ?= true
-build: build-infra build-bot
+build: build-infra
 
 build-infra:
 	mkdir -p bin
@@ -52,7 +53,7 @@ docker-bot: build-bot
 deploy: cluster_create resource_apply run_perf run_compare
 # GCP sometimes takes longer than 30 tries when trying to delete nodes
 # if k8s resources are not already cleared
-clean: compare_clean perf_clean resource_delete cluster_delete
+clean: cluster_delete
 
 cluster_create: cluster_running
 	@if [ ${ENABLE_LB} = "true" ]; then\
@@ -105,6 +106,7 @@ run_current_perf:
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs/perf_current_job.yaml
 run_ref_perf:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
@@ -113,6 +115,7 @@ run_ref_perf:
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs/perf_ref_job.yaml
 perf_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
@@ -121,6 +124,7 @@ perf_clean:
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs
 run_compare:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
@@ -128,6 +132,7 @@ run_compare:
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current/ -v RIGHT=report/${PR_NUMBER}/${UUID}/ref/ \
 		-v PATH=report/${PR_NUMBER}/${UUID} \
 		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v ENDPOINT=${ENDPOINT} \
 		-f manifests/compare
 compare_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
@@ -136,10 +141,6 @@ compare_clean:
 		-v PATH=report/${PR_NUMBER}/${UUID} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v ENDPOINT=${ENDPOINT} \
 		-f manifests/compare
-cluster_running:
-	${INFRA_CMD} ${PROVIDER} cluster check-running  \
-		-v CLUSTER_NAME:${CLUSTER_NAME} \
-		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-f manifests/cluster-${PROVIDER}.yaml
 .PHONY: deploy

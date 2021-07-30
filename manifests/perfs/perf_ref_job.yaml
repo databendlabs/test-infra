@@ -4,10 +4,14 @@ metadata:
   name: perf-tool-ref
 spec:
   template:
+    metadata:
+      labels:
+        app={{ .REF }}
+        target=perf-ref
     spec:
       containers:
         - name: perf-tool-ref
-          image: zhihanz/perf-tool:dns
+          image: zhihanz/perf-tool:master
           command:
             - sh
             - "-c"
@@ -19,7 +23,8 @@ spec:
                                 --path {{ .RIGHT }} --secretID {{ .SECRET_ID }} \
                                 --secretKey {{ .SECRET_KEY }} --type COS \
                                 --bin ./fuse-benchmark --output result \
-                                --host ref-service.default.svc.cluster.local --port 9001
+                                --host current-service.default.svc.cluster.local --port 9001 \
+                                --endpoint {{ .ENDPOINT }} -i {{ .ITERATION }}
 
               EOF
       restartPolicy: Never
