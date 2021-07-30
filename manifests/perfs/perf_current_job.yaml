@@ -4,10 +4,6 @@ metadata:
   name: perf-tool-current
 spec:
   template:
-    metadata:
-      labels:
-        app={{ .CURRENT }}
-        target=perf-current
     spec:
       containers:
         - name: perf-tool-current
