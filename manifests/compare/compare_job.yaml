@@ -6,7 +6,8 @@ spec:
   completions: 1
   template:
     metadata:
-      tag: compare
+      labels:
+        tag: compare
     spec:
       containers:
         - name: perf-tool-compare
