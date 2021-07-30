@@ -22,6 +22,8 @@ BUCKET ?= Not public
 AWS_ACCESS_KEY_ID ?= Not public
 AWS_SECRET_ACCESS_KEY ?= Not public
 ENDPOINT ?= Not public
+REGION ?= Not public
+
 DELETE_CLUSTER_AFTER_RUN ?= true
 build: build-infra
 
@@ -106,7 +108,7 @@ run_current_perf:
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${UUID}/ref\
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs/perf_current_job.yaml
 run_ref_perf:
@@ -115,7 +117,7 @@ run_ref_perf:
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${UUID}/ref \
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs/perf_ref_job.yaml
 perf_clean:
@@ -124,7 +126,7 @@ perf_clean:
 		-v LEFT=report/${PR_NUMBER}/${UUID}/${CURRENT} -v RIGHT=report/${PR_NUMBER}/${UUID}/${REFERENCE} \
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs
 run_compare:
@@ -132,7 +134,7 @@ run_compare:
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current/ -v RIGHT=report/${PR_NUMBER}/${UUID}/ref/ \
 		-v PATH=report/${PR_NUMBER}/${UUID} \
-		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} \
 		-f manifests/compare
 compare_clean:
@@ -141,7 +143,7 @@ compare_clean:
 		-v LEFT=report/${PR_NUMBER}/${UUID}/${CURRENT} -v RIGHT=report/${PR_NUMBER}/${UUID}/${REFERENCE} \
 		-v PATH=report/${PR_NUMBER}/${UUID} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v REGION=${AWS_DEFAULT_REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} \
 		-f manifests/compare
 .PHONY: deploy

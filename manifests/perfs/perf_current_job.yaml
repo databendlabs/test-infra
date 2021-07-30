@@ -7,7 +7,6 @@ spec:
   template:
     metadata:
       labels:
-        app: { { .CURRENT } }
         tag: perf-current
     spec:
       containers:
