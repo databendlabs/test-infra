@@ -4,10 +4,6 @@ metadata:
   name: perf-tool-ref
 spec:
   template:
-    metadata:
-      labels:
-        app={{ .REF }}
-        target=perf-ref
     spec:
       containers:
         - name: perf-tool-ref
