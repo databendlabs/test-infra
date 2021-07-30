@@ -4,10 +4,13 @@ kind: RunnerDeployment
 metadata:
   name: datafuse-test-infra-runners
 spec:
-  replicas: 2
+  replicas: 10
   template:
     spec:
-      image: zhihanz/actions-runner-dind:master
+      image: zhihanz/action-runner-dind:cargo
+      imagePullPolicy: Always
+      securityContext:
+        privileged: true
       dockerdWithinRunnerContainer: true
       repository: zhihanz/fuse-query
       env: []
@@ -16,13 +19,47 @@ spec:
       # per physical host. You can achieve that by setting pod anti-affinity rules and/or resource requests/limits.
       volumes:
         - name: docker-extra
+          persistentVolumeClaim:
+            claimName: cache
+        - name: sccache
           hostPath:
-            path: /mnt/docker-extra
+            path: /mnt/.cache/sccache
             type: DirectoryOrCreate
-        - name: repo
+
+        - name: cache
+          persistentVolumeClaim:
+            claimName: cache
+        - name: modules
           hostPath:
-            path: /mnt/repo
-            type: DirectoryOrCreate
+            path: /lib/modules
+            type: Directory
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory
+        - name: dind-storage
+          emptyDir: { }
       dockerVolumeMounts:
         - mountPath: /var/lib/docker
           name: docker-extra
+      # You can mount some of the shared volumes to the runner container using volumeMounts.
+      # NOTE: Do not try to mount the volume onto the runner workdir itself as it will not work. You could mount it however on a sub directory in the runner workdir
+      # Please see https://github.com/actions-runner-controller/actions-runner-controller/issues/630#issuecomment-862087323 for more information.
+      volumeMounts:
+        - mountPath: /home/runner/.cache/sccache # $HOME/.cache/sccache
+          name: cache
+        - mountPath: /lib/modules
+          name: modules
+          readOnly: true
+        - mountPath: /sys/fs/cgroup
+          name: cgroup
+        - name: dind-storage
+          mountPath: /var/lib/docker
+
+      # Total amount of local storage resources required for runner volume mount.
+      # The default limit is undefined.
+      # NOTE: You can make sure that nodes' resources are never exceeded by limiting used storage size per runner pod.
+      # You can even disable the runner mount completely by setting limit to zero if dockerdWithinRunnerContainer = true.
+      # Please see https://github.com/actions-runner-controller/actions-runner-controller/pull/674 for more information.
+      volumeSizeLimit: 10Gi
+      runtimeClassName: "runc"
