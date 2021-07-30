@@ -27,4 +27,4 @@ spec:
               exit 0
               EOF
       restartPolicy: Never
-  backoffLimit: 4
+  backoffLimit: 10

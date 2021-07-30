@@ -33,4 +33,4 @@ spec:
                     operator: In
                     values:
                       - {{ .REF }}
-  backoffLimit: 4
+  backoffLimit: 10
