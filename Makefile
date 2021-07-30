@@ -14,6 +14,7 @@ CURRENT ?= v0.4.33-nightly
 REFERENCE ?= v0.4.33-nightly
 PR_NUMBER ?= 12
 UUID ?= 233
+ITERATION ?= 3
 
 # S3 report storage
 AWS_DEFAULT_REGION ?= Not public
