@@ -3,7 +3,12 @@ kind: Job
 metadata:
   name: perf-tool-current
 spec:
+  completions: 1
   template:
+    metadata:
+      labels:
+        app: { { .CURRENT } }
+        tag: perf-current
     spec:
       containers:
         - name: perf-tool-current

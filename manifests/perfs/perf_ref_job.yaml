@@ -3,7 +3,12 @@ kind: Job
 metadata:
   name: perf-tool-ref
 spec:
+  completions: 1
   template:
+    metadata:
+      labels:
+        app: {{ .REF }}
+        tag: perf-ref
     spec:
       containers:
         - name: perf-tool-ref
@@ -19,7 +24,7 @@ spec:
                                 --path {{ .RIGHT }} --secretID {{ .SECRET_ID }} \
                                 --secretKey {{ .SECRET_KEY }} --type COS \
                                 --bin ./fuse-benchmark --output result \
-                                --host current-service.default.svc.cluster.local --port 9001 \
+                                --host ref-service.default.svc.cluster.local --port 9001 \
                                 --endpoint {{ .ENDPOINT }} -i {{ .ITERATION }}
 
               EOF

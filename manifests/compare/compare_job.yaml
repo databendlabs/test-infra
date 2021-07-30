@@ -3,7 +3,10 @@ kind: Job
 metadata:
   name: perf-tool-compare
 spec:
+  completions: 1
   template:
+    metadata:
+      tag: compare
     spec:
       containers:
         - name: perf-tool-compare
