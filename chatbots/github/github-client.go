@@ -27,12 +27,15 @@ type GithubClient struct {
 	Ctx               context.Context
 }
 
-func NewGithubClient(ctx context.Context, e *github.IssueCommentEvent) (*GithubClient, error) {
-	ghToken := os.Getenv("GITHUB_TOKEN")
-	if ghToken == "" {
+func NewGithubClient(ctx context.Context, e *github.IssueCommentEvent, token string) (*GithubClient, error) {
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+
+	}
+	if token == "" {
 		return nil, fmt.Errorf("env var missing")
 	}
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
 	return &GithubClient{
 		Clt:               github.NewClient(tc),

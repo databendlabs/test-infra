@@ -13,12 +13,18 @@ var (
 	GithubToken  string
 	WebhookToken string
 	Address      string
+	Region       string
+	Bucket       string
+	Endpoint     string
 )
 
 func init() {
 	flag.StringVar(&GithubToken, "github-token", "", "chatbot github token")
 	flag.StringVar(&WebhookToken, "webhook-token", "", "webhook token for chatbot server")
 	flag.StringVar(&Address, "address", "", "address that chatbot server binds to")
+	flag.StringVar(&Region, "region", "", "S3 Storage Region")
+	flag.StringVar(&Bucket, "bucket", "", "S3 Storage bucket")
+	flag.StringVar(&Endpoint, "endpoint", "", "S3 storage endpoint")
 
 }
 
@@ -33,6 +39,7 @@ func main() {
 		GithubToken,
 		WebhookToken,
 		Address,
+		Region, Bucket, Endpoint,
 		"/Users/zhihanzhang/Documents/go/src/test-infra/chatbots/cmd/templates/",
 		"/Users/zhihanzhang/Documents/go/src/test-infra/chatbots/cmd/static/",
 	)

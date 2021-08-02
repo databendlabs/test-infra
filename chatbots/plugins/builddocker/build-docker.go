@@ -30,7 +30,7 @@ func init() {
 }
 
 func handleIssueComment(client *plugins.Agent, ic *github.IssueCommentEvent) error {
-	handler, err := newRunPerf(ic, log.With().Str("issue comment", "build-docker").Logger())
+	handler, err := newRunPerf(ic, log.With().Str("issue comment", "build-docker").Logger(), client)
 	if err != nil {
 		return err
 	}
@@ -151,8 +151,8 @@ type handler struct {
 	Payloads map[string]string
 }
 
-func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger) (*handler, error) {
-	githubCli, err := githubcli.NewGithubClient(context.Background(), e)
+func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger, client *plugins.Agent) (*handler, error) {
+	githubCli, err := githubcli.NewGithubClient(context.Background(), e, client.Token)
 	if err != nil {
 		log.Error().Msgf("Unable to initialize github client given issue comment event %s, %s", e.GetComment().String(), err.Error())
 
