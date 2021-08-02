@@ -4,6 +4,7 @@ import (
 	"context"
 	"datafuselabs/test-infra/chatbots/hook"
 	"datafuselabs/test-infra/chatbots/utils"
+	"strings"
 
 	"github.com/jnovack/flag"
 	"github.com/rs/zerolog/log"
@@ -16,6 +17,8 @@ var (
 	Region       string
 	Bucket       string
 	Endpoint     string
+	TemplateDir string
+	StaticDir string
 )
 
 func init() {
@@ -25,11 +28,16 @@ func init() {
 	flag.StringVar(&Region, "region", "", "S3 Storage Region")
 	flag.StringVar(&Bucket, "bucket", "", "S3 Storage bucket")
 	flag.StringVar(&Endpoint, "endpoint", "", "S3 storage endpoint")
+	flag.StringVar(&TemplateDir, "template-dir", "", "dashboard template dir")
+	flag.StringVar(&StaticDir, "static-dir", "", "dashboard static file dir")
 
 }
 
 func main() {
 	flag.Parse()
+	if !strings.HasPrefix(Endpoint, "http://") && !strings.HasPrefix(Endpoint, "https://") {
+		Endpoint = "https://" + Endpoint
+	}
 	cfg := hook.NewConfig(
 		&utils.FileStorage{
 			BasePath: "./tmp",
@@ -40,8 +48,8 @@ func main() {
 		WebhookToken,
 		Address,
 		Region, Bucket, Endpoint,
-		"/Users/zhihanzhang/Documents/go/src/test-infra/chatbots/cmd/templates/",
-		"/Users/zhihanzhang/Documents/go/src/test-infra/chatbots/cmd/static/",
+		TemplateDir,
+		StaticDir,
 	)
 	server := hook.NewServer(cfg)
 	server.Start()

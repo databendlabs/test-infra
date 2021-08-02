@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: chatbot-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: chatbot
+
+  ports:
+    # Default port for clickhouse service
+    - protocol: TCP
+      port: {{ .PORT }}
+      targetPort: {{ .PORT }}

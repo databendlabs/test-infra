@@ -109,14 +109,15 @@ func handle(h *handler) error {
 
 func findMatches(h *handler, command string) (matches [][]string, dispatch_name string) {
 	matches = nil
-	for name, reg := range h.regexp {
-		matches := reg.FindAllStringSubmatch(command, -1)
-		if matches == nil {
-			continue
+	for name, regex := range h.regexp {
+		matches := regex.FindAllStringSubmatch(command, -1)
+		if matches != nil {
+			h.log.Log().Msgf("start to run command %s", name)
+			return matches, name
 		}
-		return matches, name
+
 	}
-	return matches, dispatch_name
+	return nil, dispatch_name
 }
 
 func handlerhelper(h *handler, sha string, lastTag, startTime, uuid string) (string, error) {

@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "chatbot"
+  labels:
+    app: chatbot
+spec:
+  selector:
+    matchLabels:
+      app: chatbot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: chatbot
+    spec:
+      volumes:
+        - name: varlog
+          emptyDir: {}
+      containers:
+        - name: "chatbot"
+          command: [ "/bin/sh" ]
+          args: [ "-c", "/bot --address {{ .ADDRESS }}:{{ .PORT }} --webhook-token {{ .WEBHOOK_TOKEN }} --github-token {{ .GITHUB_TOKEN }} --region {{ .REGION }} --bucket {{ .BUCKET }} --endpoint {{ .ENDPOINT }}" ]
+#          command:
+#            - /bin/sh -c sleep 1000
+##            - /bot --address {{ .ADDRESS }}:{{ .PORT }} --webhook-token {{ .WEBHOOK_TOKEN }} --github-token {{ .GITHUB_TOKEN }} --region {{ .REGION }} --bucket {{ .BUCKET }} --endpoint {{ .ENDPOINT }}
+          image: "{{ .CHATBOT_TAG }}"
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: {{ .PORT }}
+              protocol: TCP

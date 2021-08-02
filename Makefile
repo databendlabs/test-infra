@@ -24,6 +24,12 @@ AWS_SECRET_ACCESS_KEY ?= Not public
 ENDPOINT ?= Not public
 REGION ?= Not public
 
+# Chatbot settings
+CHATBOT_ADDRESS ?= 0.0.0.0
+CHATBOT_PORT ?= 7070
+CHATBOT_TAG ?= zhihanz/chatbot:debian
+CHATBOT_WEBHOOK_TOKEN ?= Not public
+CHATBOT_GITHUB_TOKEN ?= Not public
 DELETE_CLUSTER_AFTER_RUN ?= true
 build: build-infra
 
@@ -49,10 +55,23 @@ docker: docker-bot docker-infra
 docker-infra: build-infra
 	docker build --network host -f infra/Dockerfile -t ${HUB}/test-infra:${TAG} .
 docker-bot: build-bot
-	docker build --network host -f chatbots/Dockerfile -t ${HUB}/bot:${TAG} .
-
-
-
+	docker buildx build . -f ./chatbots/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/chatbot:${TAG} --push
+deploy-bot:
+	${INFRA_CMD} ${PROVIDER} resource apply  \
+    		-v CLUSTER_NAME:${CLUSTER_NAME} \
+    		-v ADDRESS=${CHATBOT_ADDRESS} -v PORT=${CHATBOT_PORT} \
+    		-v WEBHOOK_TOKEN=${CHATBOT_WEBHOOK_TOKEN} -v GITHUB_TOKEN=${CHATBOT_GITHUB_TOKEN} \
+    		-v CHATBOT_TAG=${CHATBOT_TAG} \
+    		-v REGION=${REGION} -v BUCKET=${BUCKET} -v ENDPOINT=${ENDPOINT} \
+    		-f chatbots/deploy
+delete-bot:
+	${INFRA_CMD} ${PROVIDER} resource delete  \
+    		-v CLUSTER_NAME:${CLUSTER_NAME} \
+    		-v ADDRESS=${CHATBOT_ADDRESS} -v PORT=${CHATBOT_PORT} \
+    		-v WEBHOOK_TOKEN=${CHATBOT_WEBHOOK_TOKEN} -v GITHUB_TOKEN=${CHATBOT_GITHUB_TOKEN} \
+    		-v CHATBOT_TAG=${CHATBOT_TAG} \
+    		-v REGION=${REGION} -v BUCKET=${BUCKET} -v ENDPOINT=${ENDPOINT} \
+    		-f chatbots/deploy
 deploy: cluster_create resource_apply run_perf run_compare
 # GCP sometimes takes longer than 30 tries when trying to delete nodes
 # if k8s resources are not already cleared
