@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
   name: current-service
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: "{{ .CURRENT }}"
 

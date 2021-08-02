@@ -2,8 +2,9 @@ kind: Service
 apiVersion: v1
 metadata:
   name: chatbot-service
+  namespace: chatbot-system
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: chatbot
 
