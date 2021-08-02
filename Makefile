@@ -24,6 +24,16 @@ AWS_SECRET_ACCESS_KEY ?= Not public
 ENDPOINT ?= Not public
 REGION ?= Not public
 
+# Chatbot settings
+CHATBOT_ADDRESS ?= 0.0.0.0
+CHATBOT_PORT ?= 7070
+CHATBOT_TAG ?= zhihanz/chatbot:latest
+CHATBOT_WEBHOOK_TOKEN ?= Not public
+CHATBOT_GITHUB_TOKEN ?= Not public
+
+# Github Runner Settings
+RUNNER_TOKEN ?= Not public
+
 DELETE_CLUSTER_AFTER_RUN ?= true
 build: build-infra
 
@@ -49,14 +59,51 @@ docker: docker-bot docker-infra
 docker-infra: build-infra
 	docker build --network host -f infra/Dockerfile -t ${HUB}/test-infra:${TAG} .
 docker-bot: build-bot
-	docker build --network host -f chatbots/Dockerfile -t ${HUB}/bot:${TAG} .
+	docker buildx build . -f ./chatbots/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/chatbot:${TAG} --push
+docker-runner:
+	docker buildx build . -f ./runner/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/runner:${TAG} --push
 
-
+deploy-bot: build-infra
+	${INFRA_CMD} ${PROVIDER} resource apply  \
+    		-v CLUSTER_NAME:${CLUSTER_NAME} \
+    		-v ADDRESS=${CHATBOT_ADDRESS} -v PORT=${CHATBOT_PORT} \
+    		-v WEBHOOK_TOKEN=${CHATBOT_WEBHOOK_TOKEN} -v GITHUB_TOKEN=${CHATBOT_GITHUB_TOKEN} \
+    		-v CHATBOT_TAG=${CHATBOT_TAG} \
+    		-v REGION=${REGION} -v BUCKET=${BUCKET} -v ENDPOINT=${ENDPOINT} \
+    		-f chatbots/deploy
+delete-bot:
+	${INFRA_CMD} ${PROVIDER} resource delete  \
+    		-v CLUSTER_NAME:${CLUSTER_NAME} \
+    		-v ADDRESS=${CHATBOT_ADDRESS} -v PORT=${CHATBOT_PORT} \
+    		-v WEBHOOK_TOKEN=${CHATBOT_WEBHOOK_TOKEN} -v GITHUB_TOKEN=${CHATBOT_GITHUB_TOKEN} \
+    		-v CHATBOT_TAG=${CHATBOT_TAG} \
+    		-v REGION=${REGION} -v BUCKET=${BUCKET} -v ENDPOINT=${ENDPOINT} \
+    		-f chatbots/deploy
+deploy-runner:
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+	kubectl wait --for=condition=Ready -n cert-manager pods --all --timeout 600s
+	kubectl apply -f https://github.com/actions-runner-controller/actions-runner-controller/releases/download/v0.18.2/actions-runner-controller.yaml
+	kubectl delete secret generic controller-manager -n actions-runner-system --ignore-not-found
+	kubectl create secret generic controller-manager \
+		-n actions-runner-system \
+		--from-literal=github_token=${RUNNER_TOKEN}
+	kubectl wait --for=condition=Ready -n actions-runner-system pods --all --timeout 600s
+	kubectl apply -f runner/runner.yaml
+	kubectl wait --for=condition=Ready -n runner-system pods --all --timeout=600s
+delete-runner:
+	kubectl delete -f runner/runner.yaml
+	kubectl delete -f https://github.com/actions-runner-controller/actions-runner-controller/releases/download/v0.18.2/actions-runner-controller.yaml
+	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
+minikube_start:
+	minikube start --cpus 10 --memory 16384 --disk-size='30000mb' --driver=kvm2
+deploy_local: deploy-bot deploy-runner
+port_forward:
+	kubectl port-forward service/chatbot-service -n chatbot-system ${CHATBOT_PORT}:${CHATBOT_PORT}
 
 deploy: cluster_create resource_apply run_perf run_compare
 # GCP sometimes takes longer than 30 tries when trying to delete nodes
 # if k8s resources are not already cleared
-clean: cluster_delete
+clean: delete-bot delete-runner
 
 cluster_create: cluster_running
 	@if [ ${ENABLE_LB} = "true" ]; then\

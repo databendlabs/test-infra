@@ -27,12 +27,15 @@ type GithubClient struct {
 	Ctx               context.Context
 }
 
-func NewGithubClient(ctx context.Context, e *github.IssueCommentEvent) (*GithubClient, error) {
-	ghToken := os.Getenv("GITHUB_TOKEN")
-	if ghToken == "" {
+func NewGithubClient(ctx context.Context, e *github.IssueCommentEvent, token string) (*GithubClient, error) {
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+
+	}
+	if token == "" {
 		return nil, fmt.Errorf("env var missing")
 	}
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(ctx, ts)
 	return &GithubClient{
 		Clt:               github.NewClient(tc),
@@ -102,27 +105,4 @@ func (c GithubClient) GetLatestTag() (string, error) {
 		return "", fmt.Errorf("%s owned by %s has no tags", c.Repo, c.Owner)
 	}
 	return c.LastTag, nil
-}
-
-func GetActionStatus(ctx context.Context, owner, repo string, run_id int64) (*github.WorkflowRun, error) {
-	clt, err := buildClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-	w, _, err := clt.Actions.GetWorkflowRunByID(context.Background(), owner, repo, run_id)
-	if err != nil {
-		return nil, err
-	}
-
-	return w, nil
-}
-
-func buildClient(ctx context.Context) (*github.Client, error) {
-	ghToken := os.Getenv("GITHUB_TOKEN")
-	if ghToken == "" {
-		return nil, fmt.Errorf("env var missing")
-	}
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
-	tc := oauth2.NewClient(ctx, ts)
-	return github.NewClient(tc), nil
 }

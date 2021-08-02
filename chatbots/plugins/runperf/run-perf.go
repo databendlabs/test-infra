@@ -7,10 +7,7 @@ import (
 	"context"
 	githubcli "datafuselabs/test-infra/chatbots/github"
 	"datafuselabs/test-infra/chatbots/plugins"
-	"datafuselabs/test-infra/chatbots/utils"
-	"datafuselabs/test-infra/pkg/provider"
 	"fmt"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/google/go-github/v35/github"
 	guuid "github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -18,7 +15,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -28,6 +24,8 @@ const (
 
 var (
 	reg = regexp.MustCompile(`(?mi)^/run-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
+	rerunAll = regexp.MustCompile(`(?mi)^/rerun-perf-all\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
+	rerun = regexp.MustCompile(`(?mi)^/rerun-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
 )
 
 func init() {
@@ -85,65 +83,57 @@ func handle(h *handler) error {
 		return err
 	}
 	start := strconv.Itoa(int(time.Now().Unix()))
-	err = handlerhelper(h, lastSHA, lastTag, start, id.String())
+	name, err := handlerhelper(h, lastSHA, lastTag, start, id.String())
 	if err != nil {
 		if strings.Contains(err.Error(), "is not an owner, member nor a collaborator") {
-			h.gc.PostComment(err.Error())
+			err := h.gc.PostComment(err.Error())
+			if err != nil {
+				return err
+			}
 		}
 		return err
 	}
-	wg := new(sync.WaitGroup)
 
-	// Trigger docker build on current and reference branches
-	err = h.gc.CreateRepositoryDispatch("build-docker", map[string]string{"REF": h.Payloads["CURRENT_BRANCH"],
-																					"PR_NUMBER": h.Payloads["PR_NUMBER"],
-																					"LAST_COMMIT_SHA" : h.Payloads["LAST_COMMIT_SHA"],
-																					"UUID": id.String()})
-	if err != nil {
-		h.log.Error().Msgf("cannot create build docker repository dispatch on branch %s, %s", h.Payloads["CURRENT_BRANCH"], err.Error())
-		return err
-	}
-
-	go h.waitToReady(wg, h.Payloads["CURRENT_BRANCH"], id.String())
-
-	err = h.gc.CreateRepositoryDispatch("build-docker", map[string]string{"REF": h.Payloads["REF_BRANCH"],
-		"PR_NUMBER": h.Payloads["PR_NUMBER"],
-		"LAST_COMMIT_SHA" : h.Payloads["LAST_COMMIT_SHA"], "UUID": id.String()})
-
-	if err != nil {
-		h.log.Error().Msgf("cannot create build docker repository dispatch on branch %s, %s",h.Payloads["REF_BRANCH"], err.Error())
-		return err
-	}
-	go h.waitToReady(wg, h.Payloads["REF_BRANCH"], id.String())
-
-	wg.Wait()
-	err = h.gc.CreateRepositoryDispatch("run-perf", h.Payloads)
+	err = h.gc.CreateRepositoryDispatch(name, h.Payloads)
 	if err != nil {
 		h.log.Error().Msgf("cannot create run-perf repository dispatch, %s", err.Error())
 		return err
 	}
-	// err = h.gc.PostComment(fmt.Sprintf("run performance on sha %s reference on %s", h.Payloads["CURRENT_BRANCH"], h.Payloads["REF_BRANCH"]))
-	// if err != nil {
-	// 	return err
-	// }
-
-	return nil
-}
-
-func handlerhelper(h *handler, sha string, lastTag, startTime, uuid string) error {
-	command := extractCommand(h.gc.CommentBody)
-	h.log.Log().Msgf(command)
-	matches := h.regexp.FindAllStringSubmatch(command, -1)
-	if matches == nil {
-		return fmt.Errorf("there is no matching regex")
-	}
-	err := h.verifyUser()
+	err = h.gc.PostComment(fmt.Sprintf("run performance on sha %s reference on %s", h.Payloads["CURRENT_BRANCH"], h.Payloads["REF_BRANCH"]))
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func findMatches(h *handler, command string) (matches [][]string, dispatch_name string) {
+	matches = nil
+	for name, regex := range h.regexp {
+		matches := regex.FindAllStringSubmatch(command, -1)
+		if matches != nil {
+			h.log.Log().Msgf("start to run command %s", name)
+			return matches, name
+		}
+
+	}
+	return nil, dispatch_name
+}
+
+func handlerhelper(h *handler, sha string, lastTag, startTime, uuid string) (string, error) {
+	command := extractCommand(h.gc.CommentBody)
+	h.log.Log().Msgf(command)
+	matches, name := findMatches(h, command)
+	if matches == nil {
+		return "", fmt.Errorf("there is no matching regex")
+	}
+	err := h.verifyUser()
+	if err != nil {
+		return "", err
+	}
+
 	if len(matches) < 1 || len(matches[0]) < 2 {
-		return nil
+		return "", nil
 	}
 	switch matches[0][1] {
 	case "latest":
@@ -154,34 +144,7 @@ func handlerhelper(h *handler, sha string, lastTag, startTime, uuid string) erro
 	h.CurrentBranch = sha
 	h.log.Info().Msgf("current testing branch: %s, reference branch: %s", h.CurrentBranch, h.RefBranch)
 	err = extractPayload(h, sha, startTime, uuid)
-	return err
-}
-
-func (h *handler) checkStatus(dispatchName, org, repo, pr, commit, uuid string) (string, error) {
-	sb, err :=  h.metaStore.GetCopy([]string{dispatchName, org, repo, pr, commit, uuid})
-	if err == badger.ErrKeyNotFound {
-		return "NOT_FOUND", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return string(sb), nil
-}
-func (h *handler) waitToReady(wg *sync.WaitGroup, branch, id string) {
-	wg.Add(1)
-	defer wg.Done()
-	// wait for 30min until docker is ready
-	err := provider.RetryUntilTrue(fmt.Sprintf("build-%s", branch), 180, func()(bool, error) {
-		status, err := h.checkStatus("build-docker", h.gc.Owner, h.gc.Repo, h.Payloads["PR_NUMBER"], h.Payloads["LAST_COMMIT_SHA"], id)
-		if err != nil {
-			return false, err
-		}
-		h.log.Debug().Msgf("current docker build status: %s", status)
-		return status == "SUCCESS", nil
-	})
-	if err != nil {
-		h.log.Error().Msgf("docker build failed repository dispatch on branch %s, %s", h.Payloads["CURRENT_BRANCH"], err.Error())
-	}
+	return name, err
 }
 
 func extractPayload(h *handler, sha, start, uuid string) error {
@@ -189,7 +152,9 @@ func extractPayload(h *handler, sha, start, uuid string) error {
 	h.Payloads["PR_NUMBER"] = strconv.Itoa(h.gc.Pr)
 	h.Payloads["LAST_COMMIT_SHA"] = sha
 	h.Payloads["REF_BRANCH"] = h.RefBranch
-	h.Payloads["START_TIME"] = start // for reverse lookup
+	h.Payloads["REGION"] = h.Region
+	h.Payloads["BUCKET"] = h.Bucket
+	h.Payloads["ENDPOINT"] = h.Endpoint
 	h.Payloads["UUID"] = uuid
 	return nil
 
@@ -200,7 +165,7 @@ type handler struct {
 
 	// regexp is the regular expression describing the command. It must have an optional 'un' prefix
 	// as the first subgroup and the arguments to the command as the second subgroup.
-	regexp *regexp.Regexp
+	regexp map[string]*regexp.Regexp
 	// gc is the githubClient to use for creating response comments in the event of a failure.
 	gc *githubcli.GithubClient
 
@@ -216,22 +181,30 @@ type handler struct {
 	// define a series of client-payloads that will be posted to workflow
 	Payloads map[string]string
 
-	// define external database store metadata
-	metaStore *utils.MetaStore
+	// define S3 storage configuration
+	Region string
+	Bucket string
+	Endpoint string
 }
 
 func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger, client *plugins.Agent) (*handler, error) {
-	githubCli, err := githubcli.NewGithubClient(context.Background(), e)
+	githubCli, err := githubcli.NewGithubClient(context.Background(), e, client.Token)
 	if err != nil {
 		log.Error().Msgf("Unable to initialize github client given issue comment event %s, %s", e.GetComment().String(), err.Error())
 
 		return nil, err
 	}
+	regs := make(map[string]*regexp.Regexp)
+	regs["run_perf"] = reg
+	regs["rerun_perf_all"] = rerunAll
+	regs["rerun_perf"] = rerun
 	return &handler{
-		regexp:   reg,
+		regexp:   regs,
 		gc:       githubCli,
 		log:      log,
 		Payloads: make(map[string]string),
-		metaStore: client.MetaStore,
+		Region: client.Region,
+		Bucket: client.Bucket,
+		Endpoint: client.Endpoint,
 	}, nil
 }

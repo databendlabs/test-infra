@@ -1,13 +1,52 @@
 # dindrunnerdeployment.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: runner-system
+  labels:
+    app: runner
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cache
+  namespace: runner-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 20Gi
+  hostPath:
+    path: /data/.cache/sccache
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cache
+  namespace: runner-system
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+---
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
   name: datafuse-test-infra-runners
+  labels:
+    app: runner
+  namespace: runner-system
 spec:
-  replicas: 10
+  replicas: 5
   template:
+    metadata:
+      labels:
+        app: runner
     spec:
-      image: zhihanz/action-runner-dind:cargo
+      image: zhihanz/runner:latest
       imagePullPolicy: Always
       securityContext:
         privileged: true
@@ -21,24 +60,11 @@ spec:
         - name: docker-extra
           persistentVolumeClaim:
             claimName: cache
-        - name: sccache
-          hostPath:
-            path: /mnt/.cache/sccache
-            type: DirectoryOrCreate
 
         - name: cache
           persistentVolumeClaim:
             claimName: cache
-        - name: modules
-          hostPath:
-            path: /lib/modules
-            type: Directory
-        - name: cgroup
-          hostPath:
-            path: /sys/fs/cgroup
-            type: Directory
-        - name: dind-storage
-          emptyDir: { }
+
       dockerVolumeMounts:
         - mountPath: /var/lib/docker
           name: docker-extra
@@ -48,14 +74,6 @@ spec:
       volumeMounts:
         - mountPath: /home/runner/.cache/sccache # $HOME/.cache/sccache
           name: cache
-        - mountPath: /lib/modules
-          name: modules
-          readOnly: true
-        - mountPath: /sys/fs/cgroup
-          name: cgroup
-        - name: dind-storage
-          mountPath: /var/lib/docker
-
       # Total amount of local storage resources required for runner volume mount.
       # The default limit is undefined.
       # NOTE: You can make sure that nodes' resources are never exceeded by limiting used storage size per runner pod.

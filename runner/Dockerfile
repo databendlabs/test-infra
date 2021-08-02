@@ -10,17 +10,13 @@ RUN sudo apt update -y \
 # install s3
 RUN python3 -m pip install --upgrade pip \
   && pip3 install awscli
-# install rust dependencies
-
-RUN curl https://sh.rustup.rs -sSf | \
-    sh -s -- --component rustfmt clippy miri stable -y && \
-    $HOME/.cargo/bin/rustup toolchain update nightly --allow-downgrade
-ENV PATH=$HOME/.cargo/bin:$PATH
-
-# install sccache
-RUN cargo install sccache
-RUN sccache --show-stats
-WORKDIR app
-COPY --from=zhihanz/test-infra:master /infra /infra
-COPY --from=zhihanz/test-infra:master /Makefile /Makefile
-COPY --from=zhihanz/test-infra:master /manifests /manifests/
+# install go
+COPY --from=golang:1.15.12-alpine /usr/local/go/ /usr/local/go/
+ENV PATH="/usr/local/go/bin:${PATH}"
+# install k3d
+RUN sudo curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
+# install
+RUN sudo mkdir -p /tmp/infra && sudo mkdir -p /tmp/infra/bin
+COPY --from=zhihanz/test-infra:master /infra /tmp/infra/bin/infra
+COPY --from=zhihanz/test-infra:master /Makefile /tmp/infra/Makefile
+COPY --from=zhihanz/test-infra:master /manifests /tmp/infra/manifests/

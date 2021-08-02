@@ -1,14 +1,15 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: current-service
+  name: chatbot-service
+  namespace: chatbot-system
 spec:
   type: NodePort
   selector:
-    app: "{{ .CURRENT }}"
+    app: chatbot
 
   ports:
     # Default port for clickhouse service
     - protocol: TCP
-      port: 9001
-      targetPort: 9001
+      port: {{ .PORT }}
+      targetPort: {{ .PORT }}

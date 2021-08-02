@@ -22,22 +22,24 @@ import (
 const (
 	helloEndpoint           string = "/hello"
 	payloadEndpoint         string = "/payload"
-	statusEndpoint         string = "/status"
+	statusEndpoint          string = "/status"
 	uploadEndpoint          string = "/upload"
-	indexEndpoint				string = "/"
+	indexEndpoint           string = "/"
 	benchmarkResultEndpoint string = "/benchmark/{pr:.*}/{commit:.*}"
 )
 
 type Config struct {
 	StorageEndpoint utils.StorageInterface
-	MetaStorage utils.MetaStore
 	ctx             context.Context
 	Logger          zerolog.Logger
 	GithubToken     string
 	WebhookToken    string //
 	Address         string // binded address
-	TemplateDir		string
-	StaticDir 		string
+	Region          string
+	Bucket          string
+	Endpoint        string
+	TemplateDir     string
+	StaticDir       string
 }
 
 type Server struct {
@@ -45,7 +47,7 @@ type Server struct {
 	wg     sync.WaitGroup
 }
 
-func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logger zerolog.Logger, GithubToken, WebhookToken, Address, templateDir, staticDir string) Config {
+func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logger zerolog.Logger, GithubToken, WebhookToken, Address, Region, Bucket, Endpoint, templateDir, staticDir string) Config {
 	return Config{
 		StorageEndpoint: StorageBackend,
 		ctx:             ctx,
@@ -53,8 +55,11 @@ func NewConfig(StorageBackend utils.StorageInterface, ctx context.Context, Logge
 		GithubToken:     GithubToken,
 		WebhookToken:    WebhookToken,
 		Address:         Address,
-		TemplateDir: 	 templateDir,
-		StaticDir: 	   	 staticDir,
+		Region:          Region,
+		Bucket:          Bucket,
+		Endpoint:        Endpoint,
+		TemplateDir:     templateDir,
+		StaticDir:       staticDir,
 	}
 }
 
@@ -106,11 +111,11 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 			s.wg.Add(1)
 			go func(n string, h plugins.IssueCommentHandler) {
 				defer s.wg.Done()
-				client, err := githubcli.NewGithubClient(context.Background(), e)
+				client, err := githubcli.NewGithubClient(context.Background(), e, s.Config.GithubToken)
 				if err != nil {
 					s.Config.Logger.Error().Msgf("Cannot build github client given event %s, %s", *e.Action, err.Error())
 				}
-				agent := plugins.NewAgent(client, &s.Config.MetaStorage)
+				agent := plugins.NewAgent(client, s.Config.Region, s.Config.Bucket, s.Config.Endpoint, s.Config.GithubToken)
 				err = h(agent, e)
 				if err != nil {
 					s.Config.Logger.Error().Msgf("Cannot process handler %s, %s", n, err.Error())
@@ -122,7 +127,7 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) processReqFile(req *http.Request, fileName string) error{
+func (s *Server) processReqFile(req *http.Request, fileName string) error {
 	file, _, err := req.FormFile(fileName)
 	if err == http.ErrMissingFile {
 		return nil
@@ -175,22 +180,22 @@ func (s *Server) upload(w http.ResponseWriter, req *http.Request) {
 // StatusMeta will receive update from github workflow actions
 type StatusMeta struct {
 	Organization string `json:"org,omitempty"`
-	Repository string `json:"repo,omitempty"`
-	PRNumber string `json:"pr,omitempty"`
-	CommitSHA string `json:"commitSHA,omitempty"`
-	RunId string `json:"run_id,omitempty"`
-	Author string `json:"author,omitempty"`
-	UUID string `json:"uuid,omitempty"`
+	Repository   string `json:"repo,omitempty"`
+	PRNumber     string `json:"pr,omitempty"`
+	CommitSHA    string `json:"commitSHA,omitempty"`
+	RunId        string `json:"run_id,omitempty"`
+	Author       string `json:"author,omitempty"`
+	UUID         string `json:"uuid,omitempty"`
 	DispatchName string `json:"dispatch_name,omitempty"`
-	Current string `json:"current,omitempty"`
-	Ref string `json:"ref,omitempty"`
-	Compare string `json:"compare,omitempty"`
-	Status string`json:"status,omitempty"`
-	Conclusion string `json:"conclusion,omitempty"`
-	PRLink string`json:"PRLink,omitempty"`
-	CurrentLog string`json:"currentLog,omitempty"`
-	RefLog string`json:"refLog,omitempty"`
-	StartTime string `json:"start_time,omitempty"`
+	Current      string `json:"current,omitempty"`
+	Ref          string `json:"ref,omitempty"`
+	Compare      string `json:"compare,omitempty"`
+	Status       string `json:"status,omitempty"`
+	Conclusion   string `json:"conclusion,omitempty"`
+	PRLink       string `json:"PRLink,omitempty"`
+	CurrentLog   string `json:"currentLog,omitempty"`
+	RefLog       string `json:"refLog,omitempty"`
+	StartTime    string `json:"start_time,omitempty"`
 }
 
 // status endpoint will receive status update from github workflow
@@ -231,15 +236,14 @@ func (s *Server) status(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// HandleStatus TODO report status dashboard
 func (s *Server) HandleStatus(meta StatusMeta) error {
-	return s.Config.MetaStorage.Store([]string{meta.DispatchName,
-		meta.Organization, meta.Repository,
-		meta.PRNumber, meta.CommitSHA, meta.UUID}, []byte(meta.Status))
+	return nil
 }
 
+// HandleReport TODO report dashboard
 func (s *Server) HandleReport(meta StatusMeta, jb []byte) error {
-	key := []string{"report", meta.StartTime, meta.Organization, meta.Repository, meta.PRNumber, meta.CommitSHA, meta.UUID}
-	return s.Config.MetaStorage.Store(key, jb)
+	return nil
 }
 
 type Metas struct {

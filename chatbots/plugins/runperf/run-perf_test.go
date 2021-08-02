@@ -5,6 +5,7 @@ package runperf
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"testing"
 
@@ -23,11 +24,14 @@ func newFakeGithubClient(commentBody, author, authorAssociation string, pr_num i
 	}
 }
 
-func newFakeHandler(commentBody, author, authorAssociation string, pr int) *handler {
+func newFakeHandler(commentBody, author, authorAssociation string, pr int, region, bucket, endpoint string ) *handler {
 	return &handler{
-		regexp:   reg,
+		regexp:   map[string]*regexp.Regexp{"run_perf": reg, "rerun_perf_all": rerunAll, "rerun_perf": rerun},
 		gc:       newFakeGithubClient(commentBody, author, authorAssociation, pr),
 		log:      log.With().Str("issue comment", "fusebench-local").Logger(),
+		Region: region,
+		Bucket: bucket,
+		Endpoint: endpoint,
 		Payloads: map[string]string{},
 	}
 }
@@ -43,6 +47,7 @@ func Test_handlerhelper(t *testing.T) {
 		StartTime 			string
 		UUID string
 		lastTag             string
+		expectName string
 		expectError         error
 		expectCurrentBranch string
 		expectRefBranch     string
@@ -55,6 +60,7 @@ func Test_handlerhelper(t *testing.T) {
 			authorAssociation:   "OWNER",
 			pr:                  233,
 			sha:                 "foo",
+			expectName: "run_perf",
 			expectError:         nil,
 			lastTag:             "v1.1.1-nightly",
 			expectCurrentBranch: "foo",
@@ -62,7 +68,44 @@ func Test_handlerhelper(t *testing.T) {
 			UUID: "12",
 			expectRefBranch:     "master",
 			expectPayload:       map[string]string{"CURRENT_BRANCH": "foo", "PR_NUMBER": strconv.Itoa(233),
-				"LAST_COMMIT_SHA": "foo", "REF_BRANCH": "master", "START_TIME": "1", "UUID": "12"},
+				"LAST_COMMIT_SHA": "foo", "REF_BRANCH": "master", "UUID": "12",
+				"REGION": "foo-region", "BUCKET": "foo-bucket", "ENDPOINT": "foo-endpoint"},
+		},
+		{
+			name:                "master",
+			comment:             "/rerun-perf-all master",
+			author:              "zhihanz",
+			authorAssociation:   "OWNER",
+			pr:                  233,
+			sha:                 "foo",
+			expectName: "rerun_perf_all",
+			expectError:         nil,
+			lastTag:             "v1.1.1-nightly",
+			expectCurrentBranch: "foo",
+			StartTime: "1",
+			UUID: "12",
+			expectRefBranch:     "master",
+			expectPayload:       map[string]string{"CURRENT_BRANCH": "foo", "PR_NUMBER": strconv.Itoa(233),
+				"LAST_COMMIT_SHA": "foo", "REF_BRANCH": "master", "UUID": "12",
+				"REGION": "foo-region", "BUCKET": "foo-bucket", "ENDPOINT": "foo-endpoint"},
+		},
+		{
+			name:                "master",
+			comment:             "/rerun-perf master",
+			author:              "zhihanz",
+			authorAssociation:   "OWNER",
+			pr:                  233,
+			sha:                 "foo",
+			expectName: "rerun_perf",
+			expectError:         nil,
+			lastTag:             "v1.1.1-nightly",
+			expectCurrentBranch: "foo",
+			StartTime: "1",
+			UUID: "12",
+			expectRefBranch:     "master",
+			expectPayload:       map[string]string{"CURRENT_BRANCH": "foo", "PR_NUMBER": strconv.Itoa(233),
+				"LAST_COMMIT_SHA": "foo", "REF_BRANCH": "master", "UUID": "12",
+				"REGION": "foo-region", "BUCKET": "foo-bucket", "ENDPOINT": "foo-endpoint"},
 		},
 		{
 			name:                "newline",
@@ -73,12 +116,14 @@ func Test_handlerhelper(t *testing.T) {
 			lastTag:             "v1.1.1-nightly",
 			sha:                 "bar",
 			UUID: "12",
+			expectName: "run_perf",
 			expectError:         nil,
 			StartTime: "1",
 			expectCurrentBranch: "bar",
 			expectRefBranch:     "v1.1.1-nightly",
 			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233),
-				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly", "START_TIME": "1", "UUID": "12"},
+				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly", "UUID": "12",
+				"REGION": "foo-region", "BUCKET": "foo-bucket", "ENDPOINT": "foo-endpoint"},
 		},
 		{
 			name:                "laetst",
@@ -88,13 +133,15 @@ func Test_handlerhelper(t *testing.T) {
 			pr:                  233,
 			lastTag:             "v1.1.1-nightly",
 			sha:                 "bar",
+			expectName: "run_perf",
 			expectError:         nil,
 			StartTime: "1",
 			UUID: "12",
 			expectCurrentBranch: "bar",
 			expectRefBranch:     "v1.1.1-nightly",
 			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233),
-				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly", "START_TIME": "1", "UUID": "12"},
+				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.1.1-nightly", "UUID": "12",
+				"REGION": "foo-region", "BUCKET": "foo-bucket", "ENDPOINT": "foo-endpoint"},
 		},
 		{
 			name:                "release",
@@ -106,17 +153,20 @@ func Test_handlerhelper(t *testing.T) {
 			sha:                 "bar",
 			StartTime: "1",
 			UUID: "12",
+			expectName: "run_perf",
 			expectError:         nil,
 			expectCurrentBranch: "bar",
 			expectRefBranch:     "v1.2.3-nightly",
 			expectPayload:       map[string]string{"CURRENT_BRANCH": "bar", "PR_NUMBER": strconv.Itoa(233),
-				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.2.3-nightly", "START_TIME": "1", "UUID": "12"},
+				"LAST_COMMIT_SHA": "bar", "REF_BRANCH": "v1.2.3-nightly", "UUID": "12",
+				"REGION": "foo-region", "BUCKET": "foo-bucket", "ENDPOINT": "foo-endpoint"},
 		},
 		{
 			name:                "empty",
 			comment:             "/run-perf-local",
 			author:              "zhihanz",
 			authorAssociation:   "OWNER",
+			expectName: "",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
 			StartTime: "1",
@@ -130,6 +180,7 @@ func Test_handlerhelper(t *testing.T) {
 			comment:             "/run-perf Wubba-Lubba-Dub-Dub",
 			author:              "zhihanz",
 			authorAssociation:   "OWNER",
+			expectName: "",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
 			StartTime: "1",
@@ -143,6 +194,7 @@ func Test_handlerhelper(t *testing.T) {
 			comment:             "/run-perf Wubba Lubba Dub Dub",
 			author:              "zhihanz",
 			authorAssociation:   "OWNER",
+			expectName: "",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
 			StartTime: "1",
@@ -156,6 +208,7 @@ func Test_handlerhelper(t *testing.T) {
 			comment:             "/run-perf master main",
 			author:              "zhihanz",
 			authorAssociation:   "OWNER",
+			expectName: "",
 			expectError:         fmt.Errorf("there is no matching regex"),
 			pr:                  233,
 			StartTime: "1",
@@ -167,8 +220,10 @@ func Test_handlerhelper(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := newFakeHandler(tt.comment, tt.author, tt.authorAssociation, tt.pr)
-			assert.Equal(t, handlerhelper(handler, tt.sha, tt.lastTag, tt.StartTime, tt.UUID), tt.expectError)
+			handler := newFakeHandler(tt.comment, tt.author, tt.authorAssociation, tt.pr, "foo-region", "foo-bucket", "foo-endpoint")
+			name, err := handlerhelper(handler, tt.sha, tt.lastTag, tt.StartTime, tt.UUID)
+			assert.Equal(t, name, tt.expectName)
+			assert.Equal(t, err, tt.expectError)
 			assert.Equal(t, handler.CurrentBranch, tt.expectCurrentBranch)
 			assert.Equal(t, handler.RefBranch, tt.expectRefBranch)
 			assert.Equal(t, handler.Payloads, tt.expectPayload)
