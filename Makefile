@@ -57,7 +57,7 @@ lint:
 docker: docker-bot docker-infra
 
 docker-infra: build-infra
-	docker build --network host -f infra/Dockerfile -t ${HUB}/test-infra:${TAG} .
+	docker buildx build . -f ./infra/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/test-infra:${TAG} --push
 docker-bot: build-bot
 	docker buildx build . -f ./chatbots/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/chatbot:${TAG} --push
 docker-runner:

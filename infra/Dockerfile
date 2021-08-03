@@ -14,7 +14,4 @@ RUN apt-get install -y kubectl
 
 # Install Docker CLI.
 COPY --from=docker /usr/local/bin/docker /usr/local/bin/docker
-RUN chmod o+rw /var/run/docker.sock
-# install kind
-
 ENTRYPOINT ["/bin/sh", "-c"]

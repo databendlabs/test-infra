@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: "perf.ref"
+  namespace: default
   labels:
     app: "{{ .REF }}"
     tag: ref

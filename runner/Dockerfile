@@ -10,6 +10,17 @@ RUN sudo apt update -y \
 # install s3
 RUN python3 -m pip install --upgrade pip \
   && pip3 install awscli
+
+# install rust dependencies
+
+RUN curl https://sh.rustup.rs -sSf | \
+    sh -s -- --component rustfmt clippy miri stable -y && \
+    $HOME/.cargo/bin/rustup toolchain update nightly --allow-downgrade
+ENV PATH=$HOME/.cargo/bin:$PATH
+
+# install sccache
+RUN cargo install sccache
+RUN sccache --show-stats
 # install go
 COPY --from=golang:1.15.12-alpine /usr/local/go/ /usr/local/go/
 ENV PATH="/usr/local/go/bin:${PATH}"
