@@ -2,7 +2,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: current-service
-  namespace: default
+  namespace: "{{ .NAMESPACE }}"
 spec:
   type: NodePort
   selector:

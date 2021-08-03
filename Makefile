@@ -8,6 +8,7 @@ CLUSTER_NAME ?= fusebench
 CPU ?= 3300m
 MEMORY ?= 3Gi
 ENABLE_LB ?= true
+NAMESPACE ?= default
 
 # branch info for compare
 CURRENT ?= v0.4.33-nightly
@@ -60,7 +61,7 @@ docker-infra: build-infra
 	docker buildx build . -f ./infra/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/test-infra:${TAG} --push
 docker-bot: build-bot
 	docker buildx build . -f ./chatbots/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/chatbot:${TAG} --push
-docker-runner:
+docker-runner: docker-infra
 	docker buildx build . -f ./runner/Dockerfile  --platform linux/amd64 --allow network.host --builder host -t ${HUB}/runner:${TAG} --push
 
 deploy-bot: build-infra
@@ -114,30 +115,35 @@ cluster_create: cluster_running
             kubectl apply -f ./manifests/config.yaml;\
     fi
 resource_apply: resource_apply_current resource_apply_ref
-resource_apply_current:
+resource_apply_config:
+	${INFRA_CMD} ${PROVIDER} resource apply  \
+		-v CLUSTER_NAME:${CLUSTER_NAME} \
+		-v NAMESPACE=${NAMESPACE}\
+		-f manifests/config.yaml
+resource_apply_current: resource_apply_config
 	${INFRA_CMD} ${PROVIDER} resource apply  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v CPU=${CPU} -v MEMORY=${MEMORY} \
+		-v CPU=${CPU} -v MEMORY=${MEMORY} -v NAMESPACE=${NAMESPACE}\
 		-f manifests/current
 
-resource_apply_ref:
+resource_apply_ref: resource_apply_config
 	${INFRA_CMD} ${PROVIDER} resource apply  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v CPU=${CPU} -v MEMORY=${MEMORY} \
+		-v CPU=${CPU} -v MEMORY=${MEMORY}  -v NAMESPACE=${NAMESPACE}\
 		-f manifests/ref
 
 resource_delete:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v CPU=${CPU} -v MEMORY=${MEMORY} \
+		-v CPU=${CPU} -v MEMORY=${MEMORY}  -v NAMESPACE=${NAMESPACE}\
 		-f manifests/current
 	${INFRA_CMD} ${PROVIDER} resource delete  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
-		-v CPU=${CPU} -v MEMORY=${MEMORY} \
+		-v CPU=${CPU} -v MEMORY=${MEMORY}  -v NAMESPACE=${NAMESPACE}\
 		-f manifests/ref
 cluster_delete:
 	@if [ ${DELETE_CLUSTER_AFTER_RUN} = "true" ]; then\
@@ -154,7 +160,7 @@ run_current_perf:
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${UUID}/ref\
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
-		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
+		-v CURRENT=${CURRENT} -v REF=${REFERENCE}  -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs/perf_current_job.yaml
@@ -163,7 +169,7 @@ run_ref_perf:
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${UUID}/ref \
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
-		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
+		-v CURRENT=${CURRENT} -v REF=${REFERENCE} -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
 		-f manifests/perfs/perf_ref_job.yaml
@@ -171,7 +177,7 @@ perf_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v LEFT=report/${PR_NUMBER}/${UUID}/${CURRENT} -v RIGHT=report/${PR_NUMBER}/${UUID}/${REFERENCE} \
-		-v CPU=${CPU} -v MEMORY=${MEMORY} \
+		-v CPU=${CPU} -v MEMORY=${MEMORY} -v NAMESPACE=${NAMESPACE}\
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
@@ -180,7 +186,7 @@ run_compare:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v LEFT=report/${PR_NUMBER}/${UUID}/current/ -v RIGHT=report/${PR_NUMBER}/${UUID}/ref/ \
-		-v PATH=report/${PR_NUMBER}/${UUID} \
+		-v PATH=report/${PR_NUMBER}/${UUID} -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} \
 		-f manifests/compare
@@ -188,7 +194,7 @@ compare_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
 		-v LEFT=report/${PR_NUMBER}/${UUID}/${CURRENT} -v RIGHT=report/${PR_NUMBER}/${UUID}/${REFERENCE} \
-		-v PATH=report/${PR_NUMBER}/${UUID} \
+		-v PATH=report/${PR_NUMBER}/${UUID} -v NAMESPACE=${NAMESPACE}\
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} \

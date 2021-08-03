@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: default
-  namespace: default
+  namespace: "{{ .NAMESPACE }}"
 data:
   FUSE_QUERY_CLICKHOUSE_HANDLER_HOST: "0.0.0.0"
   FUSE_QUERY_HTTP_API_ADDRESS: "0.0.0.0:8081"

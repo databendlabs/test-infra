@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: perf-tool-compare
-  namespace: default
+  namespace: "{{ .NAMESPACE }}"
 spec:
   completions: 1
   template:
