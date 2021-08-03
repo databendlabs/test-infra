@@ -96,7 +96,7 @@ delete-runner:
 	kubectl delete -f https://github.com/actions-runner-controller/actions-runner-controller/releases/download/v0.18.2/actions-runner-controller.yaml
 	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
 minikube_start:
-	minikube start --cpus 10 --memory 16384 --disk-size='30000mb' --driver=kvm2
+	minikube start --cpus 10 --memory 16384 --disk-size='50000mb' --driver=kvm2
 deploy_local: deploy-bot deploy-runner
 port_forward:
 	kubectl port-forward service/chatbot-service -n chatbot-system ${CHATBOT_PORT}:${CHATBOT_PORT}
