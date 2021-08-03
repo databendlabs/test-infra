@@ -4,7 +4,6 @@ metadata:
   name: perf-tool-ref
   namespace: "{{ .NAMESPACE }}"
 spec:
-  completions: 1
   template:
     metadata:
       labels:
