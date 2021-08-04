@@ -16,6 +16,7 @@ REFERENCE ?= v0.4.33-nightly
 PR_NUMBER ?= 12
 UUID ?= 233
 ITERATION ?= 3
+RERUN ?= False
 LEFT_LOG ?= bucket/pr/commit/uuid/current.log
 RIGHT_LOG ?= bucket/pr/commit/uuid/ref.log
 
@@ -30,7 +31,7 @@ REGION ?= Not public
 # Chatbot settings
 CHATBOT_ADDRESS ?= 0.0.0.0
 CHATBOT_PORT ?= 7070
-CHATBOT_TAG ?= zhihanz/chatbot:latest
+CHATBOT_TAG ?= datafuselabs/chatbot:latest
 CHATBOT_WEBHOOK_TOKEN ?= Not public
 CHATBOT_GITHUB_TOKEN ?= Not public
 

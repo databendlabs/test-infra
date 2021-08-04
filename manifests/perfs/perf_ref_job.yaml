@@ -24,7 +24,7 @@ spec:
                                 --secretKey {{ .SECRET_KEY }} --type COS \
                                 --bin ./fuse-benchmark --output result \
                                 --host ref-service.default.svc.cluster.local --port 9001 \
-                                --endpoint {{ .ENDPOINT }} -i {{ .ITERATION }}
+                                --endpoint {{ .ENDPOINT }} -i {{ .ITERATION }} --rerun {{ .RERUN }}
 
               EOF
       restartPolicy: Never
