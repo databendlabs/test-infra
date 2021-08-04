@@ -1,4 +1,4 @@
-HUB=zhihanz
+HUB=datafuselabs
 TAG=cargo
 PLATFORM=linux/amd64
 dockerx:

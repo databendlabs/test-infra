@@ -42,7 +42,7 @@ spec:
               P4=$!
               wait $P1 $P2 $P3 $P4
               EOF
-          image: "zhihanz/datafuse:perf-{{ .CURRENT }}"
+          image: "datafuselabs/datafuse:perf-{{ .CURRENT }}"
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

@@ -51,7 +51,7 @@ spec:
       securityContext:
         privileged: true
       dockerdWithinRunnerContainer: true
-      repository: zhihanz/fuse-query
+      repository: datafuselabs/datafuse
       env: []
       # You can mount some of the shared volumes to the dind container using dockerVolumeMounts, like any other volume mounting.
       # NOTE: in case you want to use an hostPath like the following example, make sure that Kubernetes doesn't schedule more than one runner
