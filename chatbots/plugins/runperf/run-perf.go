@@ -103,7 +103,11 @@ func handle(h *handler) error {
 	if err != nil {
 		return err
 	}
-
+	err = h.gc.UpdateStatus("run-perf-status", "pending", "")
+	if err != nil {
+		h.log.Error().Msgf("cannot update status, %s", err.Error())
+		return err
+	}
 	return nil
 }
 

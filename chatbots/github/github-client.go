@@ -20,6 +20,7 @@ type GithubClient struct {
 	Repo              string
 	Pr                int
 	Author            string
+	LastSHA 		  string
 	CommentBody       string
 	AuthorAssociation string
 	State             string
@@ -66,13 +67,14 @@ func (c GithubClient) CreateLabel(labelName string) error {
 	return err
 }
 
-func (c GithubClient) GetLastCommitSHA() string {
+func (c *GithubClient) GetLastCommitSHA() string {
 	// https://developer.github.com/v3/pulls/#list-commits-on-a-pull-request
 	listops := &github.ListOptions{Page: 1, PerPage: 250}
 	l, _, _ := c.Clt.PullRequests.ListCommits(c.Ctx, c.Owner, c.Repo, c.Pr, listops)
 	if len(l) == 0 {
 		return ""
 	}
+	c.LastSHA =l[len(l)-1].GetSHA()
 	return l[len(l)-1].GetSHA()
 }
 
@@ -90,6 +92,12 @@ func (c GithubClient) CreateRepositoryDispatch(eventType string, clientPayload m
 
 	log.Printf("creating repository_dispatch with payload: %v", string(allArgs))
 	_, _, err = c.Clt.Repositories.Dispatch(c.Ctx, c.Owner, c.Repo, rd)
+	return err
+}
+
+func (c GithubClient) UpdateStatus(statusName, state, targetUrl string) error {
+	status := github.RepoStatus{State: &state, Context: &statusName, TargetURL: &targetUrl}
+	_, _, err := c.Clt.Repositories.CreateStatus(c.Ctx, c.Owner, c.Repo, c.LastSHA, &status)
 	return err
 }
 
