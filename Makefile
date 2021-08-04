@@ -160,7 +160,7 @@ run_perf: run_current_perf run_ref_perf
 run_current_perf:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
-		-v LEFT=report/${PR_NUMBER}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${UUID}/ref\
+		-v LEFT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/ref \
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE}  -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
@@ -169,7 +169,7 @@ run_current_perf:
 run_ref_perf:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
-		-v LEFT=report/${PR_NUMBER}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${UUID}/ref \
+		-v LEFT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/current -v RIGHT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/ref \
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
@@ -187,16 +187,17 @@ perf_clean:
 run_compare:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
-		-v LEFT=report/${PR_NUMBER}/${UUID}/current/ -v RIGHT=report/${PR_NUMBER}/${UUID}/ref/ \
-		-v PATH=report/${PR_NUMBER}/${UUID} -v NAMESPACE=${NAMESPACE}\
+		-v LEFT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/current/ -v RIGHT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/ref/ \
+		-v PATH=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID} -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
-		-v ENDPOINT=${ENDPOINT} \
+		-v ENDPOINT=${ENDPOINT} -v LEFT_LOG=${ENDPOINT}/${BUCKET}/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/log/current.log \
+		-v RIGHT_LOG=${ENDPOINT}/${BUCKET}/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/log/ref.log \
 		-f manifests/compare
 compare_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
 		-v CLUSTER_NAME:${CLUSTER_NAME} \
-		-v LEFT=report/${PR_NUMBER}/${UUID}/${CURRENT} -v RIGHT=report/${PR_NUMBER}/${UUID}/${REFERENCE} \
-		-v PATH=report/${PR_NUMBER}/${UUID} -v NAMESPACE=${NAMESPACE}\
+		-v LEFT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/${CURRENT} -v RIGHT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/${REFERENCE} \
+		-v PATH=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID} -v NAMESPACE=${NAMESPACE}\
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
 		-v ENDPOINT=${ENDPOINT} \
