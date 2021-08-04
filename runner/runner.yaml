@@ -48,6 +48,8 @@ spec:
     spec:
       image: datafuselabs/runner:latest
       imagePullPolicy: Always
+      labels:
+        - perf-runner
       securityContext:
         privileged: true
       dockerdWithinRunnerContainer: true
