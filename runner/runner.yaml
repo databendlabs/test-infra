@@ -15,7 +15,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   capacity:
-    storage: 20Gi
+    storage: 10Gi
   hostPath:
     path: /data/.cache/sccache
 ---
@@ -40,13 +40,13 @@ metadata:
     app: runner
   namespace: runner-system
 spec:
-  replicas: 5
+  replicas: 10
   template:
     metadata:
       labels:
         app: runner
     spec:
-      image: zhihanz/runner:latest
+      image: datafuselabs/runner:latest
       imagePullPolicy: Always
       securityContext:
         privileged: true
@@ -79,5 +79,5 @@ spec:
       # NOTE: You can make sure that nodes' resources are never exceeded by limiting used storage size per runner pod.
       # You can even disable the runner mount completely by setting limit to zero if dockerdWithinRunnerContainer = true.
       # Please see https://github.com/actions-runner-controller/actions-runner-controller/pull/674 for more information.
-      volumeSizeLimit: 10Gi
+      volumeSizeLimit: 50Gi
       runtimeClassName: "runc"

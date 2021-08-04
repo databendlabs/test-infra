@@ -28,6 +28,6 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 RUN sudo curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
 # install
 RUN sudo mkdir -p /tmp/infra && sudo mkdir -p /tmp/infra/bin
-COPY --from=zhihanz/test-infra:master /infra /tmp/infra/bin/infra
-COPY --from=zhihanz/test-infra:master /Makefile /tmp/infra/Makefile
-COPY --from=zhihanz/test-infra:master /manifests /tmp/infra/manifests/
+COPY --from=zhihanz/test-infra:latest /app/infra /tmp/infra/bin/infra
+COPY --from=zhihanz/test-infra:latest /app/Makefile /tmp/infra/Makefile
+COPY --from=zhihanz/test-infra:latest /app/manifests /tmp/infra/manifests/

@@ -1,4 +1,4 @@
-HUB ?= zhihanz
+HUB ?= datafuselabs
 TAG ?= latest
 INFRA_CMD ?=  ./bin/infra
 
