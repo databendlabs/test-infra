@@ -165,7 +165,7 @@ run_current_perf:
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE}  -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
-		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
+		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION}  -v RERUN=${RERUN} \
 		-f manifests/perfs/perf_current_job.yaml
 run_ref_perf:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
@@ -174,7 +174,7 @@ run_ref_perf:
 		-v CPU=${CPU} -v MEMORY=${MEMORY} \
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
-		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
+		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} -v RERUN=${RERUN} \
 		-f manifests/perfs/perf_ref_job.yaml
 perf_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
@@ -183,7 +183,7 @@ perf_clean:
 		-v CPU=${CPU} -v MEMORY=${MEMORY} -v NAMESPACE=${NAMESPACE}\
 		-v CURRENT=${CURRENT} -v REF=${REFERENCE} \
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
-		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} \
+		-v ENDPOINT=${ENDPOINT} -v ITERATION=${ITERATION} -v RERUN=${RERUN} \
 		-f manifests/perfs
 run_compare:
 	${INFRA_CMD} ${PROVIDER} resource apply  \
