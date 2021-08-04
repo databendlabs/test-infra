@@ -190,8 +190,8 @@ run_compare:
 		-v LEFT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/current/ -v RIGHT=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/ref/ \
 		-v PATH=report/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID} -v NAMESPACE=${NAMESPACE}\
 		-v REGION=${REGION} -v BUCKET=${BUCKET} -v SECRET_ID=${AWS_ACCESS_KEY_ID} -v SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
-		-v ENDPOINT=${ENDPOINT} -v LEFT_LOG=${ENDPOINT}/${BUCKET}/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/log/current.log \
-		-v RIGHT_LOG=${ENDPOINT}/${BUCKET}/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/log/ref.log \
+		-v ENDPOINT=${ENDPOINT} -v LEFT_LOG=https://${ENDPOINT}/${BUCKET}/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/log/current.log \
+		-v RIGHT_LOG=https://${ENDPOINT}/${BUCKET}/${PR_NUMBER}/${LAST_COMMIT_SHA}/${UUID}/log/ref.log \
 		-f manifests/compare
 compare_clean:
 	${INFRA_CMD} ${PROVIDER} resource delete  \
