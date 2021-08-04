@@ -16,6 +16,8 @@ REFERENCE ?= v0.4.33-nightly
 PR_NUMBER ?= 12
 UUID ?= 233
 ITERATION ?= 3
+LEFT_LOG ?= bucket/pr/commit/uuid/current.log
+RIGHT_LOG ?= bucket/pr/commit/uuid/ref.log
 
 # S3 report storage
 AWS_DEFAULT_REGION ?= Not public

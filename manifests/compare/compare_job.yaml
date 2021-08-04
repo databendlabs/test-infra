@@ -28,7 +28,7 @@ spec:
                                 --secretKey {{ .SECRET_KEY }} --type COS \
                                 --releaser ./current --pull ./ref \
                                 --rpath {{ .LEFT }} --ppath {{ .RIGHT }} -o {{ .PATH }} \
-                                --endpoint {{ .ENDPOINT }}
+                                --endpoint {{ .ENDPOINT }} --currentLogLink {{ .LEFT_LOG }} --refLogLink {{ .RIGHT_LOG }}
               exit 0
               EOF
       restartPolicy: Never
