@@ -31,13 +31,13 @@ spec:
             - |
               /bin/bash <<'EOF'
               echo "Start benchmarking on {{ .REF }}"
-              /fuse-store &> /var/log/{{ .REF }}-fuse-store.log &
+              /datafuse-store &> /var/log/{{ .REF }}-datafuse-store.log &
               P1=$!
-              /fuse-query &> /var/log/{{ .REF }}-fuse-query.log &
+              /datafuse-query &> /var/log/{{ .REF }}-datafuse-query.log &
               P2=$!
-              tail -n+1 -f /var/log/{{ .REF }}-fuse-store.log &
+              tail -n+1 -f /var/log/{{ .REF }}-datafuse-store.log &
               P3=$!
-              tail -n+1 -f /var/log/{{ .REF }}-fuse-query.log &
+              tail -n+1 -f /var/log/{{ .REF }}-datafuse-query.log &
               P4=$!
               wait $P1 $P2 $P3 $P4
               EOF
