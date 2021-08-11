@@ -22,7 +22,7 @@ spec:
               python3 perfs.py --region {{ .REGION }} --bucket {{ .BUCKET }} \
                                 --path {{ .LEFT }} --secretID {{ .SECRET_ID }} \
                                 --secretKey {{ .SECRET_KEY }} --type COS \
-                                --bin ./fuse-benchmark --output result \
+                                --bin ./datafuse-benchmark --output result \
                                 --host current-service.default.svc.cluster.local --port 9001 \
                                 --endpoint {{ .ENDPOINT }} -i {{ .ITERATION }} --rerun {{ .RERUN }}
 
