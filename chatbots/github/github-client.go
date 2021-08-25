@@ -51,6 +51,26 @@ func NewGithubClient(ctx context.Context, e *github.IssueCommentEvent, token str
 	}, nil
 }
 
+func NewGithubClientByPush(ctx context.Context, e *github.PushEvent, token string) (*GithubClient, error) {
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+
+	}
+	if token == "" {
+		return nil, fmt.Errorf("env var missing")
+	}
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(ctx, ts)
+	return &GithubClient{
+		Clt:     github.NewClient(tc),
+		Owner:   *e.GetRepo().Owner.Login,
+		Repo:    *e.GetRepo().Name,
+		Author:  e.GetPusher().GetLogin(),
+		LastSHA: e.GetHeadCommit().GetID(),
+		Ctx:     ctx,
+	}, nil
+}
+
 func (c GithubClient) PostComment(commentBody string) error {
 	issueComment := &github.IssueComment{Body: github.String(commentBody)}
 	_, _, err := c.Clt.Issues.CreateComment(c.Ctx, c.Owner, c.Repo, c.Pr, issueComment)
@@ -80,20 +100,38 @@ func (c *GithubClient) GetLastCommitSHA() string {
 
 // return true if some workflow run in the latest commit are in progress or failure
 func (c *GithubClient) HasUnfinishedWorkflow() (bool, string) {
-	Options := &github.ListWorkflowRunsOptions{Actor: c.Author, Event: "pull_request", Status: "in_progress", ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
+	Options := &github.ListWorkflowRunsOptions{Actor: c.Author, Event: "pull_request", Status: "queued", ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
 	l, _, _ := c.Clt.Actions.ListRepositoryWorkflowRuns(c.Ctx, c.Owner, c.Repo, Options)
+	log.Printf("current queued workflow number %d", len(l.WorkflowRuns))
 	for _, workflow := range l.WorkflowRuns {
-		if workflow.GetHeadCommit().SHA == &c.LastSHA {
+		if workflow.GetHeadSHA() == c.GetLastCommitSHA() {
+			return true, ""
+		}
+	}
+
+	Options = &github.ListWorkflowRunsOptions{Actor: c.Author, Event: "pull_request", Status: "in_progress", ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
+	l, _, _ = c.Clt.Actions.ListRepositoryWorkflowRuns(c.Ctx, c.Owner, c.Repo, Options)
+	log.Printf("current in-progress workflow number %d", len(l.WorkflowRuns))
+	for _, workflow := range l.WorkflowRuns {
+		if workflow.GetHeadSHA() == c.GetLastCommitSHA() {
 			return true, ""
 		}
 	}
 	Options = &github.ListWorkflowRunsOptions{Actor: c.Author, Event: "pull_request", Status: "failure", ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
+	l, _, _ = c.Clt.Actions.ListRepositoryWorkflowRuns(c.Ctx, c.Owner, c.Repo, Options)
+	log.Printf("current failed workflow number %d", len(l.WorkflowRuns))
 	for _, workflow := range l.WorkflowRuns {
-		if workflow.GetHeadCommit().SHA == &c.LastSHA {
+		if workflow.GetHeadSHA() == c.GetLastCommitSHA() {
 			return true, *workflow.HTMLURL
 		}
 	}
 	return false, ""
+}
+
+func (c *GithubClient) ListAssociatedPR(sha string) []*github.PullRequest {
+	Options := &github.PullRequestListOptions{ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
+	l, _, _ := c.Clt.PullRequests.ListPullRequestsWithCommit(c.Ctx, c.Owner, c.Repo, sha, Options)
+	return l
 }
 
 func (c GithubClient) CreateRepositoryDispatch(eventType string, clientPayload map[string]string) error {
