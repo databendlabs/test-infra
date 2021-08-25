@@ -72,16 +72,20 @@ func (h handler) verifyUser() error {
 }
 
 func waitForReady(h *handler) error {
-	for {
+	h.log.Info().Msgf("wait for other tasks finish")
+	retries := 200
+	for i := 0; i < retries; i++ {
 		has, info := h.gc.HasUnfinishedWorkflow()
+		if info != "" {
+			return fmt.Errorf("has failed jobs %s", info)
+		}
 		if !has {
 			return nil
 		}
-		if info != "" {
-			return fmt.Errorf("cannot proceed performance test, %s failed", info)
-		}
 		time.Sleep(30 * time.Second)
+		h.log.Info().Msgf("retry times: %d", i)
 	}
+	return nil
 }
 
 // ok-to-fusebench <branch-name> will run fusebench test given branch reference
@@ -110,10 +114,8 @@ func handle(h *handler) error {
 	// wait for the rest workflow success
 	err = waitForReady(h)
 	if err != nil {
-		err := h.gc.PostComment(err.Error())
-		if err != nil {
-			return err
-		}
+		h.gc.PostComment(err.Error())
+		return err
 	}
 
 	err = h.gc.CreateRepositoryDispatch(name, h.Payloads)

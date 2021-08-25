@@ -14,6 +14,7 @@ import (
 
 var (
 	IssueCommentHandlers = map[string]IssueCommentHandler{}
+	PushHandlers         = map[string]PushHandler{}
 )
 
 type Agent struct {
@@ -23,11 +24,14 @@ type Agent struct {
 	Region       string
 	Bucket       string
 	Endpoint     string
-	Token string
+	Token        string
 }
 
 // IssueCommentHandler defines the function contract for a github.IssueCommentEvent handler.
 type IssueCommentHandler func(*Agent, *github.IssueCommentEvent) error
+
+// PushHandler defines the function contract for a github.IssueCommentEvent handler.
+type PushHandler func(*Agent, *github.PushEvent) error
 
 func NewAgent(gitClient *githubcli.GithubClient, region, bucket, endpoint, token string) *Agent {
 	return &Agent{
@@ -36,9 +40,13 @@ func NewAgent(gitClient *githubcli.GithubClient, region, bucket, endpoint, token
 		Region:       region,
 		Bucket:       bucket,
 		Endpoint:     endpoint,
-		Token:  token,
+		Token:        token,
 	}
 }
 func RegisterIssueCommentHandler(name string, fn IssueCommentHandler) {
 	IssueCommentHandlers[name] = fn
+}
+
+func RegisterPushHandler(name string, fn PushHandler) {
+	PushHandlers[name] = fn
 }

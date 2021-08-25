@@ -4,6 +4,7 @@ import (
 	"context"
 	"datafuselabs/test-infra/chatbots/plugins"
 	_ "datafuselabs/test-infra/chatbots/plugins/builddocker"
+	_ "datafuselabs/test-infra/chatbots/plugins/labelrunperf"
 	_ "datafuselabs/test-infra/chatbots/plugins/runperf"
 	"datafuselabs/test-infra/chatbots/utils"
 	"encoding/json"
@@ -114,6 +115,24 @@ func (s *Server) payload(w http.ResponseWriter, req *http.Request) {
 				client, err := githubcli.NewGithubClient(context.Background(), e, s.Config.GithubToken)
 				if err != nil {
 					s.Config.Logger.Error().Msgf("Cannot build github client given event %s, %s", *e.Action, err.Error())
+				}
+				agent := plugins.NewAgent(client, s.Config.Region, s.Config.Bucket, s.Config.Endpoint, s.Config.GithubToken)
+				err = h(agent, e)
+				if err != nil {
+					s.Config.Logger.Error().Msgf("Cannot process handler %s, %s", n, err.Error())
+				}
+			}(name, handler)
+		}
+	case *github.PushEvent:
+		log.Info().Msgf("ref %s received push event %s in pull requests %s owner %s repo %s", e.GetHeadCommit().GetMessage(),
+			e.GetHeadCommit().GetID(), e.GetPusher().GetName(), e.GetRepo().GetName(), e.GetRepo().GetOwner().GetName())
+		for name, handler := range plugins.PushHandlers {
+			s.wg.Add(1)
+			go func(n string, h plugins.PushHandler) {
+				defer s.wg.Done()
+				client, err := githubcli.NewGithubClientByPush(context.Background(), e, s.Config.GithubToken)
+				if err != nil {
+					s.Config.Logger.Error().Msgf("Cannot build github client given event %s, %s", e.GetHeadCommit().GetID(), err.Error())
 				}
 				agent := plugins.NewAgent(client, s.Config.Region, s.Config.Bucket, s.Config.Endpoint, s.Config.GithubToken)
 				err = h(agent, e)
