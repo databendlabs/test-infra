@@ -20,7 +20,7 @@ type GithubClient struct {
 	Repo              string
 	Pr                int
 	Author            string
-	LastSHA 		  string
+	LastSHA           string
 	CommentBody       string
 	AuthorAssociation string
 	State             string
@@ -74,8 +74,26 @@ func (c *GithubClient) GetLastCommitSHA() string {
 	if len(l) == 0 {
 		return ""
 	}
-	c.LastSHA =l[len(l)-1].GetSHA()
+	c.LastSHA = l[len(l)-1].GetSHA()
 	return l[len(l)-1].GetSHA()
+}
+
+// return true if some workflow run in the latest commit are in progress or failure
+func (c *GithubClient) HasUnfinishedWorkflow() (bool, string) {
+	Options := &github.ListWorkflowRunsOptions{Actor: c.Author, Event: "pull_request", Status: "in_progress", ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
+	l, _, _ := c.Clt.Actions.ListRepositoryWorkflowRuns(c.Ctx, c.Owner, c.Repo, Options)
+	for _, workflow := range l.WorkflowRuns {
+		if workflow.GetHeadCommit().SHA == &c.LastSHA {
+			return true, ""
+		}
+	}
+	Options = &github.ListWorkflowRunsOptions{Actor: c.Author, Event: "pull_request", Status: "failure", ListOptions: github.ListOptions{Page: 1, PerPage: 250}}
+	for _, workflow := range l.WorkflowRuns {
+		if workflow.GetHeadCommit().SHA == &c.LastSHA {
+			return true, *workflow.HTMLURL
+		}
+	}
+	return false, ""
 }
 
 func (c GithubClient) CreateRepositoryDispatch(eventType string, clientPayload map[string]string) error {

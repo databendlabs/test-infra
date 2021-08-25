@@ -8,14 +8,15 @@ import (
 	githubcli "datafuselabs/test-infra/chatbots/github"
 	"datafuselabs/test-infra/chatbots/plugins"
 	"fmt"
-	"github.com/google/go-github/v35/github"
-	guuid "github.com/google/uuid"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/go-github/v35/github"
+	guuid "github.com/google/uuid"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -23,9 +24,9 @@ const (
 )
 
 var (
-	reg = regexp.MustCompile(`(?mi)^/run-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
+	reg      = regexp.MustCompile(`(?mi)^/run-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
 	rerunAll = regexp.MustCompile(`(?mi)^/rerun-perf-all\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
-	rerun = regexp.MustCompile(`(?mi)^/rerun-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
+	rerun    = regexp.MustCompile(`(?mi)^/rerun-perf\s*(?P<RELEASE>master|main|latest|v[0-9]+\.[0-9]+\.[0-9]+\S*)\s*$`)
 )
 
 func init() {
@@ -70,6 +71,19 @@ func (h handler) verifyUser() error {
 	return nil
 }
 
+func waitForReady(h *handler) error {
+	for {
+		has, info := h.gc.HasUnfinishedWorkflow()
+		if !has {
+			return nil
+		}
+		if info != "" {
+			return fmt.Errorf("cannot proceed performance test, %s failed", info)
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
 // ok-to-fusebench <branch-name> will run fusebench test given branch reference
 func handle(h *handler) error {
 	if h == nil {
@@ -92,6 +106,14 @@ func handle(h *handler) error {
 			}
 		}
 		return err
+	}
+	// wait for the rest workflow success
+	err = waitForReady(h)
+	if err != nil {
+		err := h.gc.PostComment(err.Error())
+		if err != nil {
+			return err
+		}
 	}
 
 	err = h.gc.CreateRepositoryDispatch(name, h.Payloads)
@@ -186,8 +208,8 @@ type handler struct {
 	Payloads map[string]string
 
 	// define S3 storage configuration
-	Region string
-	Bucket string
+	Region   string
+	Bucket   string
 	Endpoint string
 }
 
@@ -207,8 +229,8 @@ func newRunPerf(e *github.IssueCommentEvent, log zerolog.Logger, client *plugins
 		gc:       githubCli,
 		log:      log,
 		Payloads: make(map[string]string),
-		Region: client.Region,
-		Bucket: client.Bucket,
+		Region:   client.Region,
+		Bucket:   client.Bucket,
 		Endpoint: client.Endpoint,
 	}, nil
 }
