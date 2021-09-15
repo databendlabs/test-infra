@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	LeassLockName      = "datafuse-chatbot-lock"
+	LeassLockName      = "databend-chatbot-lock"
 	LeaseLockNamespace = "kube-system"
 )
 

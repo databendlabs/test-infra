@@ -1,5 +1,5 @@
 # test-infra
-This repository contains tools and configuration files for the testing, benchmarking and automation needs of the datafuse projects.
+This repository contains tools and configuration files for the testing, benchmarking and automation needs of the databend projects.
 
 ## Functions and Features
 1. Fast CI speed, By design one performance testing should not exceed two hours(including docker build time and performance testing running time)
@@ -13,7 +13,7 @@ This repository contains tools and configuration files for the testing, benchmar
 2. dashboard for unified monitoring
 3. prometheus and grafana integration
 
-## Datafuse performance tests:
+## Databend performance tests:
 Steps:
 1. Chatbot receive PR comments for performance testing
 2. Chatbot validate on commenter’s permission

@@ -32,17 +32,17 @@ spec:
             - |
               /bin/bash <<'EOF'
               echo "Start benchmarking on {{ .CURRENT }}"
-              /datafuse-store &> /var/log/{{ .CURRENT }}-datafuse-store.log &
+              /databend-store &> /var/log/{{ .CURRENT }}-databend-store.log &
               P1=$!
-              /datafuse-query &> /var/log/{{ .CURRENT }}-datafuse-query.log &
+              /databend-query &> /var/log/{{ .CURRENT }}-databend-query.log &
               P2=$!
-              tail -n+1 -f /var/log/{{ .CURRENT }}-datafuse-store.log &
+              tail -n+1 -f /var/log/{{ .CURRENT }}-databend-store.log &
               P3=$!
-              tail -n+1 -f /var/log/{{ .CURRENT }}-datafuse-query.log &
+              tail -n+1 -f /var/log/{{ .CURRENT }}-databend-query.log &
               P4=$!
               wait $P1 $P2 $P3 $P4
               EOF
-          image: "datafuselabs/datafuse:perf-{{ .CURRENT }}"
+          image: "datafuselabs/databend:perf-{{ .CURRENT }}"
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

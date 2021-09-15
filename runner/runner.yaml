@@ -35,7 +35,7 @@ spec:
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
-  name: datafuse-test-infra-runners
+  name: databend-test-infra-runners
   labels:
     app: runner
   namespace: runner-system
@@ -53,7 +53,7 @@ spec:
       securityContext:
         privileged: true
       dockerdWithinRunnerContainer: true
-      repository: datafuselabs/datafuse
+      repository: datafuselabs/databend
       env: []
       # You can mount some of the shared volumes to the dind container using dockerVolumeMounts, like any other volume mounting.
       # NOTE: in case you want to use an hostPath like the following example, make sure that Kubernetes doesn't schedule more than one runner

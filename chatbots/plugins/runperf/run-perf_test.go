@@ -28,7 +28,7 @@ func newFakeHandler(commentBody, author, authorAssociation string, pr int, regio
 	return &handler{
 		regexp:   map[string]*regexp.Regexp{"run_perf": reg, "rerun_perf_all": rerunAll, "rerun_perf": rerun},
 		gc:       newFakeGithubClient(commentBody, author, authorAssociation, pr),
-		log:      log.With().Str("issue comment", "fusebench-local").Logger(),
+		log:      log.With().Str("issue comment", "bendbench-local").Logger(),
 		Region: region,
 		Bucket: bucket,
 		Endpoint: endpoint,
