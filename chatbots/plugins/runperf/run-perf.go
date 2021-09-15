@@ -35,7 +35,7 @@ func init() {
 }
 
 func handleIssueComment(client *plugins.Agent, ic *github.IssueCommentEvent) error {
-	handler, err := newRunPerf(ic, log.With().Str("issue comment", "fusebench-local").Logger(), client)
+	handler, err := newRunPerf(ic, log.With().Str("issue comment", "bendbench-local").Logger(), client)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (h handler) verifyUser() error {
 		}
 	}
 	if !allowed {
-		return fmt.Errorf("@%s is not a org, member nor a collaborator and cannot execute fusebench.", h.gc.Author)
+		return fmt.Errorf("@%s is not a org, member nor a collaborator and cannot execute bendbench.", h.gc.Author)
 	}
 	h.log.Info().Msgf("author is a owner, member or collaborator")
 	return nil
@@ -88,7 +88,7 @@ func waitForReady(h *handler) error {
 	return nil
 }
 
-// ok-to-fusebench <branch-name> will run fusebench test given branch reference
+// ok-to-bendbench <branch-name> will run bendbench test given branch reference
 func handle(h *handler) error {
 	if h == nil {
 		return nil

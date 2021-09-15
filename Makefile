@@ -4,7 +4,7 @@ INFRA_CMD ?=  ./bin/infra
 
 # Cluster settings
 PROVIDER ?= kind
-CLUSTER_NAME ?= fusebench
+CLUSTER_NAME ?= bendbench
 CPU ?= 3300m
 MEMORY ?= 3Gi
 ENABLE_LB ?= true
