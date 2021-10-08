@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
         - name: perf-tool-current
-          image: datafuselabs/perf-tool:latest
+          image: zhihanz/perf-tool:test
           command:
             - sh
             - "-c"
