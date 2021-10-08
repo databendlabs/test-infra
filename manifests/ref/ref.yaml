@@ -31,7 +31,7 @@ spec:
             - |
               /bin/bash <<'EOF'
               echo "Start benchmarking on {{ .REF }}"
-              /databend-store &> /var/log/{{ .REF }}-databend-store.log &
+              /databend-meta --single=true &> /var/log/{{ .REF }}-databend-store.log &
               P1=$!
               /databend-query &> /var/log/{{ .REF }}-databend-query.log &
               P2=$!

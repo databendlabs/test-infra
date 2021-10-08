@@ -32,11 +32,11 @@ spec:
             - |
               /bin/bash <<'EOF'
               echo "Start benchmarking on {{ .CURRENT }}"
-              /databend-store &> /var/log/{{ .CURRENT }}-databend-store.log &
+              /databend-meta --single=true &> /var/log/{{ .CURRENT }}-databend-meta.log &
               P1=$!
               /databend-query &> /var/log/{{ .CURRENT }}-databend-query.log &
               P2=$!
-              tail -n+1 -f /var/log/{{ .CURRENT }}-databend-store.log &
+              tail -n+1 -f /var/log/{{ .CURRENT }}-databend-meta.log &
               P3=$!
               tail -n+1 -f /var/log/{{ .CURRENT }}-databend-query.log &
               P4=$!
