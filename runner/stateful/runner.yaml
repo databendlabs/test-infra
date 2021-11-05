@@ -1,0 +1,117 @@
+# dindrunnerdeployment.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stateful-runner-system
+  labels:
+    app: runner
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cache
+  namespace: stateful-runner-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: /data/.cache/sccache
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dataset
+  namespace: stateful-runner-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 30Gi
+  hostPath:
+    path: /data/dataset
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cache
+  namespace: stateful-runner-system
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dataset
+  namespace: stateful-runner-system
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: databend-test-infra-runners
+  labels:
+    app: runner
+  namespace: stateful-runner-system
+spec:
+  replicas: 10
+  template:
+    metadata:
+      labels:
+        app: runner
+    spec:
+      image: datafuselabs/stateful-runner
+      imagePullPolicy: Always
+      labels:
+        - stateful-runner
+      securityContext:
+        privileged: true
+      dockerdWithinRunnerContainer: true
+      repository: datafuselabs/databend
+      env: []
+      # You can mount some of the shared volumes to the dind container using dockerVolumeMounts, like any other volume mounting.
+      # NOTE: in case you want to use an hostPath like the following example, make sure that Kubernetes doesn't schedule more than one runner
+      # per physical host. You can achieve that by setting pod anti-affinity rules and/or resource requests/limits.
+      volumes:
+        - name: docker-extra
+          persistentVolumeClaim:
+            claimName: cache
+
+        - name: cache
+          persistentVolumeClaim:
+            claimName: cache
+        
+        - name: dataset
+          persistentVolumeClaim:
+            claimName: dataset
+
+      dockerVolumeMounts:
+        - mountPath: /var/lib/docker
+          name: docker-extra
+      # You can mount some of the shared volumes to the runner container using volumeMounts.
+      # NOTE: Do not try to mount the volume onto the runner workdir itself as it will not work. You could mount it however on a sub directory in the runner workdir
+      # Please see https://github.com/actions-runner-controller/actions-runner-controller/issues/630#issuecomment-862087323 for more information.
+      volumeMounts:
+        - mountPath: /home/runner/.cache/sccache # $HOME/.cache/sccache
+          name: cache
+        - mountPath: /home/runner/dataset # $HOME/.cache/sccache
+          name: dataset
+      # Total amount of local storage resources required for runner volume mount.
+      # The default limit is undefined.
+      # NOTE: You can make sure that nodes' resources are never exceeded by limiting used storage size per runner pod.
+      # You can even disable the runner mount completely by setting limit to zero if dockerdWithinRunnerContainer = true.
+      # Please see https://github.com/actions-runner-controller/actions-runner-controller/pull/674 for more information.
+      volumeSizeLimit: 50Gi
+      runtimeClassName: "runc"
