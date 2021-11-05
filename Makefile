@@ -83,14 +83,14 @@ delete-bot:
     		-v CHATBOT_TAG=${CHATBOT_TAG} \
     		-v REGION=${REGION} -v BUCKET=${BUCKET} -v ENDPOINT=${ENDPOINT} \
     		-f chatbots/deploy
+deploy-stateful:
+	kubectl apply -f runner/stateful/runner.yaml
 deploy-runner:
 	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
 	kubectl wait --for=condition=Ready -n cert-manager pods --all --timeout 600s
 	kubectl apply -f https://github.com/actions-runner-controller/actions-runner-controller/releases/download/v0.18.2/actions-runner-controller.yaml
 	kubectl delete secret generic controller-manager -n actions-runner-system --ignore-not-found
-	kubectl create secret generic controller-manager \
-		-n actions-runner-system \
-		--from-literal=github_token=${RUNNER_TOKEN}
+	kubectl create secret generic controller-manager -n actions-runner-system --from-literal=github_token=${RUNNER_TOKEN}
 	kubectl wait --for=condition=Ready -n actions-runner-system pods --all --timeout 600s
 	kubectl apply -f runner/runner.yaml
 	kubectl wait --for=condition=Ready -n runner-system pods --all --timeout=600s
@@ -99,7 +99,7 @@ delete-runner:
 	kubectl delete -f https://github.com/actions-runner-controller/actions-runner-controller/releases/download/v0.18.2/actions-runner-controller.yaml
 	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.yaml
 minikube_start:
-	minikube start --cpus 10 --memory 16384 --disk-size='50000mb' --driver=kvm2
+	minikube start --cpus 10 --memory 16384 --disk-size='50000mb' --driver=kvm2 --kubernetes-version=v1.20.3
 deploy_local: deploy-bot deploy-runner
 port_forward:
 	kubectl port-forward service/chatbot-service -n chatbot-system ${CHATBOT_PORT}:${CHATBOT_PORT}
